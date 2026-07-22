@@ -1,0 +1,176 @@
+// -----------------------------------------------------------------------------
+// iT1DXpert / DiabetesCare — Prisma schema
+//
+// This file is the single source of truth for the database structure.
+// Scope for THIS phase (backend scaffold): Hospital, User, Patient, Doctor —
+// enough to build auth + RBAC + multi-tenant scoping end to end.
+//
+// The logging/gamification models (GlucoseLog, Badge, etc.) are included as
+// lightweight placeholders so the schema already reflects where the data
+// will live, but their controllers/routes are NOT built yet — that's the
+// next phase. Comments mark what's "scaffold now" vs "shape only, for later".
+// -----------------------------------------------------------------------------
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+// Enums
+// -----------------------------------------------------------------------------
+
+// Four-tier role model discussed: Super Admin > Hospital Admin > Doctor > Patient.
+// Stored as a Postgres enum so invalid roles are rejected at the DB level,
+// not just in application code.
+enum Role {
+  SUPER_ADMIN
+  HOSPITAL_ADMIN
+  DOCTOR
+  PATIENT
+}
+
+enum DiabetesType {
+  TYPE_1
+  TYPE_2 // kept for flexibility even though current focus is Type 1
+}
+
+// -----------------------------------------------------------------------------
+// Core tenancy + auth models (built this phase)
+// -----------------------------------------------------------------------------
+
+// A hospital/clinic tenant. PGI Chandigarh is the first row here, but every
+// patient/doctor/log is scoped to a hospitalId from day one so onboarding a
+// second hospital later doesn't require a data migration.
+model Hospital {
+  id           String   @id @default(uuid())
+  name         String
+  address      String?
+  contactEmail String?
+  contactPhone String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  users    User[]
+  patients PatientProfile[]
+  doctors  DoctorProfile[]
+
+  @@map("hospitals")
+}
+
+// Single auth table for every role. Role-specific fields live in
+// PatientProfile / DoctorProfile rather than being crammed in here — keeps
+// this table lean and avoids a pile of nullable columns.
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  phone        String?  @unique
+  passwordHash String
+  role         Role
+  isActive     Boolean  @default(true)
+
+  // Nullable because SUPER_ADMIN is platform-wide and isn't tied to one
+  // hospital. Every other role MUST have a hospitalId — enforced in the
+  // application layer (Prisma can't conditionally require a field per role).
+  hospitalId String?
+  hospital   Hospital? @relation(fields: [hospitalId], references: [id])
+
+  patientProfile PatientProfile?
+  doctorProfile  DoctorProfile?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([hospitalId])
+  @@map("users")
+}
+
+model PatientProfile {
+  id             String        @id @default(uuid())
+  userId         String        @unique
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  hospitalId     String
+  hospital       Hospital      @relation(fields: [hospitalId], references: [id])
+
+  fullName       String
+  dateOfBirth    DateTime?
+  gender         String?
+  diabetesType   DiabetesType  @default(TYPE_1)
+  diagnosisDate  DateTime?
+
+  // Doctor this patient is currently assigned to (nullable — may be
+  // unassigned right after signup, before hospital admin allocates one).
+  assignedDoctorId String?
+  assignedDoctor   DoctorProfile? @relation(fields: [assignedDoctorId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([hospitalId])
+  @@index([assignedDoctorId])
+  @@map("patient_profiles")
+}
+
+model DoctorProfile {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  hospitalId     String
+  hospital       Hospital @relation(fields: [hospitalId], references: [id])
+
+  fullName       String
+  specialization String?
+  licenseNumber  String?
+
+  patients PatientProfile[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([hospitalId])
+  @@map("doctor_profiles")
+}
+
+// -----------------------------------------------------------------------------
+// Shape-only placeholders for the NEXT phase (logging + gamification).
+// Not wired to any controller/route yet — included here so the relations are
+// already correct when that phase starts, avoiding a schema rewrite later.
+// -----------------------------------------------------------------------------
+
+model GlucoseLog {
+  id          String   @id @default(uuid())
+  patientId   String
+  hospitalId  String
+  value       Float // mg/dL
+  context     String? // e.g. "pre-lunch", "post-dinner"
+  loggedAt    DateTime @default(now())
+
+  @@index([patientId, loggedAt])
+  @@map("glucose_logs")
+}
+
+model StreakRecord {
+  id             String   @id @default(uuid())
+  patientId      String   @unique
+  currentStreak  Int      @default(0)
+  longestStreak  Int      @default(0)
+  lastLoggedDate DateTime?
+
+  @@map("streak_records")
+}
+
+model Badge {
+  id          String @id @default(uuid())
+  name        String
+  description String
+  criteria    String // human-readable rule for now; formalize once badge logic is built
+
+  @@map("badges")
+}
