@@ -3,7 +3,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
 import { ProtectedRoute } from "./components/ProtectedRoute.jsx";
 import { AppShell } from "./components/layout/AppShell.jsx";
 import { HOME_PATH_BY_ROLE } from "./config/navConfig.js";
-
+import { LandingPage } from "./pages/marketing/LandingPage.jsx";
 import { LoginPage } from "./pages/auth/LoginPage.jsx";
 import { RegisterPage } from "./pages/auth/RegisterPage.jsx";
 import { PatientDashboardPlaceholder } from "./pages/patient/PatientDashboardPlaceholder.jsx";
@@ -15,6 +15,7 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
+          <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
 
