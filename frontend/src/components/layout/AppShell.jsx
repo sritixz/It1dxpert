@@ -1,17 +1,17 @@
-// AppShell — the layout every authenticated page renders inside.
-// Picks the right nav list for the logged-in user's role via NAV_CONFIG,
-// so patient/doctor/admin dashboards each get their own sidebar without
-// three separate layout components to maintain.
-
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { NAV_CONFIG } from "../../config/navConfig.js";
 import { Sidebar } from "./Sidebar.jsx";
 import { Topbar } from "./Topbar.jsx";
 
-export function AppShell({ title }) {
+export function AppShell() {
   const { user } = useAuth();
+  const location = useLocation();
   const navItems = NAV_CONFIG[user?.role] || [];
+
+  // Dynamically compute the title from the current path matching the navItems config
+  const activeItem = navItems.find((item) => item.path === location.pathname);
+  const title = activeItem ? activeItem.label : "Dashboard";
 
   return (
     <div className="flex h-screen bg-bg">
