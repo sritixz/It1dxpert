@@ -43,6 +43,28 @@ export default {
       },
       boxShadow: {
         card: "0 1px 2px rgba(22, 35, 58, 0.04), 0 4px 16px rgba(22, 35, 58, 0.06)",
+        float: "0 20px 60px -12px rgba(22, 35, 58, 0.25)",
+      },
+      keyframes: {
+        blob: {
+          "0%, 100%": { transform: "translate(0, 0) scale(1)" },
+          "33%": { transform: "translate(24px, -32px) scale(1.08)" },
+          "66%": { transform: "translate(-18px, 18px) scale(0.95)" },
+        },
+        float: {
+          "0%, 100%": { transform: "translateY(0px)" },
+          "50%": { transform: "translateY(-10px)" },
+        },
+        "pulse-ring": {
+          "0%": { transform: "scale(0.9)", opacity: "0.6" },
+          "80%, 100%": { transform: "scale(1.6)", opacity: "0" },
+        },
+      },
+      animation: {
+        blob: "blob 14s infinite ease-in-out",
+        "blob-delay": "blob 14s infinite ease-in-out -7s",
+        float: "float 5s ease-in-out infinite",
+        "pulse-ring": "pulse-ring 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite",
       },
     },
   },

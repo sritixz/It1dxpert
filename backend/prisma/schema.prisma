@@ -1,14 +1,11 @@
 // -----------------------------------------------------------------------------
 // iT1DXpert / DiabetesCare — Prisma schema
 //
-// This file is the single source of truth for the database structure.
-// Scope for THIS phase (backend scaffold): Hospital, User, Patient, Doctor —
-// enough to build auth + RBAC + multi-tenant scoping end to end.
-//
-// The logging/gamification models (GlucoseLog, Badge, etc.) are included as
-// lightweight placeholders so the schema already reflects where the data
-// will live, but their controllers/routes are NOT built yet — that's the
-// next phase. Comments mark what's "scaffold now" vs "shape only, for later".
+// Full schema: auth/RBAC + patient logging (glucose/insulin/meals/activity)
+// + medications/adherence + rule-based alerts + appointments + gamification
+// (streaks/badges). Every patient-owned row carries both patientId and
+// hospitalId so multi-tenant scoping (see scopeToHospital middleware) can
+// be enforced at the query level everywhere, not just on the profile tables.
 // -----------------------------------------------------------------------------
 
 generator client {
@@ -24,9 +21,6 @@ datasource db {
 // Enums
 // -----------------------------------------------------------------------------
 
-// Four-tier role model discussed: Super Admin > Hospital Admin > Doctor > Patient.
-// Stored as a Postgres enum so invalid roles are rejected at the DB level,
-// not just in application code.
 enum Role {
   SUPER_ADMIN
   HOSPITAL_ADMIN
@@ -39,13 +33,28 @@ enum DiabetesType {
   TYPE_2 // kept for flexibility even though current focus is Type 1
 }
 
+enum DoseStatus {
+  UPCOMING
+  TAKEN
+  MISSED
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
 // -----------------------------------------------------------------------------
-// Core tenancy + auth models (built this phase)
+// Tenancy + auth
 // -----------------------------------------------------------------------------
 
-// A hospital/clinic tenant. PGI Chandigarh is the first row here, but every
-// patient/doctor/log is scoped to a hospitalId from day one so onboarding a
-// second hospital later doesn't require a data migration.
 model Hospital {
   id           String   @id @default(uuid())
   name         String
@@ -56,16 +65,21 @@ model Hospital {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  users    User[]
-  patients PatientProfile[]
-  doctors  DoctorProfile[]
+  users        User[]
+  patients     PatientProfile[]
+  doctors      DoctorProfile[]
+  glucoseLogs  GlucoseLog[]
+  insulinLogs  InsulinLog[]
+  mealLogs     MealLog[]
+  activityLogs ActivityLog[]
+  notes        PatientNote[]
+  medications  Medication[]
+  alerts       Alert[]
+  appointments Appointment[]
 
   @@map("hospitals")
 }
 
-// Single auth table for every role. Role-specific fields live in
-// PatientProfile / DoctorProfile rather than being crammed in here — keeps
-// this table lean and avoids a pile of nullable columns.
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
@@ -74,9 +88,8 @@ model User {
   role         Role
   isActive     Boolean  @default(true)
 
-  // Nullable because SUPER_ADMIN is platform-wide and isn't tied to one
-  // hospital. Every other role MUST have a hospitalId — enforced in the
-  // application layer (Prisma can't conditionally require a field per role).
+  // Nullable because SUPER_ADMIN is platform-wide. Every other role MUST
+  // have a hospitalId — enforced in the application layer.
   hospitalId String?
   hospital   Hospital? @relation(fields: [hospitalId], references: [id])
 
@@ -91,23 +104,32 @@ model User {
 }
 
 model PatientProfile {
-  id             String        @id @default(uuid())
-  userId         String        @unique
-  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  hospitalId     String
-  hospital       Hospital      @relation(fields: [hospitalId], references: [id])
+  hospitalId String
+  hospital   Hospital @relation(fields: [hospitalId], references: [id])
 
-  fullName       String
-  dateOfBirth    DateTime?
-  gender         String?
-  diabetesType   DiabetesType  @default(TYPE_1)
-  diagnosisDate  DateTime?
+  fullName      String
+  dateOfBirth   DateTime?
+  gender        String?
+  diabetesType  DiabetesType @default(TYPE_1)
+  diagnosisDate DateTime?
 
-  // Doctor this patient is currently assigned to (nullable — may be
-  // unassigned right after signup, before hospital admin allocates one).
   assignedDoctorId String?
   assignedDoctor   DoctorProfile? @relation(fields: [assignedDoctorId], references: [id])
+
+  glucoseLogs   GlucoseLog[]
+  insulinLogs   InsulinLog[]
+  mealLogs      MealLog[]
+  activityLogs  ActivityLog[]
+  notes         PatientNote[]
+  medications   Medication[]
+  alerts        Alert[]
+  appointments  Appointment[]
+  streakRecord  StreakRecord?
+  patientBadges PatientBadge[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -118,18 +140,19 @@ model PatientProfile {
 }
 
 model DoctorProfile {
-  id             String   @id @default(uuid())
-  userId         String   @unique
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  hospitalId     String
-  hospital       Hospital @relation(fields: [hospitalId], references: [id])
+  hospitalId String
+  hospital   Hospital @relation(fields: [hospitalId], references: [id])
 
   fullName       String
   specialization String?
   licenseNumber  String?
 
-  patients PatientProfile[]
+  patients     PatientProfile[]
+  appointments Appointment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -139,28 +162,189 @@ model DoctorProfile {
 }
 
 // -----------------------------------------------------------------------------
-// Shape-only placeholders for the NEXT phase (logging + gamification).
-// Not wired to any controller/route yet — included here so the relations are
-// already correct when that phase starts, avoiding a schema rewrite later.
+// Patient logging (Daily Log / Glucose Trends screens)
 // -----------------------------------------------------------------------------
 
 model GlucoseLog {
-  id          String   @id @default(uuid())
-  patientId   String
-  hospitalId  String
-  value       Float // mg/dL
-  context     String? // e.g. "pre-lunch", "post-dinner"
-  loggedAt    DateTime @default(now())
+  id         String   @id @default(uuid())
+  patientId  String
+  patient    PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  hospitalId String
+  hospital   Hospital @relation(fields: [hospitalId], references: [id])
+
+  value    Float // mg/dL
+  context  String? // e.g. "pre-lunch", "post-dinner"
+  loggedAt DateTime @default(now())
 
   @@index([patientId, loggedAt])
   @@map("glucose_logs")
 }
 
+model InsulinLog {
+  id         String   @id @default(uuid())
+  patientId  String
+  patient    PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  hospitalId String
+  hospital   Hospital @relation(fields: [hospitalId], references: [id])
+
+  units       Float
+  insulinType String? // e.g. "rapid-acting", "long-acting"
+  loggedAt    DateTime @default(now())
+
+  @@index([patientId, loggedAt])
+  @@map("insulin_logs")
+}
+
+model MealLog {
+  id         String   @id @default(uuid())
+  patientId  String
+  patient    PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  hospitalId String
+  hospital   Hospital @relation(fields: [hospitalId], references: [id])
+
+  carbs    Float // grams
+  mealType String? // breakfast/lunch/dinner/snack
+  notes    String?
+  loggedAt DateTime @default(now())
+
+  @@index([patientId, loggedAt])
+  @@map("meal_logs")
+}
+
+model ActivityLog {
+  id         String   @id @default(uuid())
+  patientId  String
+  patient    PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  hospitalId String
+  hospital   Hospital @relation(fields: [hospitalId], references: [id])
+
+  durationMins Int
+  activityType String?
+  loggedAt     DateTime @default(now())
+
+  @@index([patientId, loggedAt])
+  @@map("activity_logs")
+}
+
+// -----------------------------------------------------------------------------
+// Patient notes — free-text entries (e.g. "felt tired in the evening"), shown
+// alongside logs in the doctor's merged event timeline. Didn't exist before
+// this phase; added specifically to support the Glucose Monitor screen's
+// "Recent Events" timeline from the reference mockups.
+// -----------------------------------------------------------------------------
+
+model PatientNote {
+  id         String   @id @default(uuid())
+  patientId  String
+  patient    PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  hospitalId String
+  hospital   Hospital @relation(fields: [hospitalId], references: [id])
+
+  content  String
+  loggedAt DateTime @default(now())
+
+  @@index([patientId, loggedAt])
+  @@map("patient_notes")
+}
+
+// -----------------------------------------------------------------------------
+// Medications (Medications screen)
+// -----------------------------------------------------------------------------
+
+model Medication {
+  id         String   @id @default(uuid())
+  patientId  String
+  patient    PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  hospitalId String
+  hospital   Hospital @relation(fields: [hospitalId], references: [id])
+
+  name           String
+  dose           String // e.g. "16 units", "500mg" — kept as text, units vary too much for a pure number
+  frequency      String // e.g. "Once daily", "Before meals"
+  scheduledTimes String[] // e.g. ["08:00", "20:00"]
+  purpose        String?
+  notes          String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  doses MedicationDose[]
+
+  @@index([patientId])
+  @@map("medications")
+}
+
+// A dose EVENT (taken/missed), not a schedule template — logged directly by
+// the patient tapping "taken" rather than requiring a cron job to
+// pre-generate rows for every scheduled time. Keeps this phase simple;
+// a scheduler can be layered on top later without changing this shape.
+model MedicationDose {
+  id           String     @id @default(uuid())
+  medicationId String
+  medication   Medication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+  patientId    String
+  scheduledFor DateTime
+  takenAt      DateTime?
+  status       DoseStatus @default(TAKEN)
+
+  @@index([patientId, scheduledFor])
+  @@map("medication_doses")
+}
+
+// -----------------------------------------------------------------------------
+// Alerts — rule-based threshold flags only (no AI), per the compliance
+// decision to keep this a monitoring tool, not a clinical advisory one.
+// -----------------------------------------------------------------------------
+
+model Alert {
+  id         String   @id @default(uuid())
+  patientId  String
+  patient    PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  hospitalId String
+  hospital   Hospital @relation(fields: [hospitalId], references: [id])
+
+  type       String // e.g. "HIGH_GLUCOSE", "LOW_GLUCOSE", "MISSED_DOSE", "HBA1C_DUE"
+  severity   AlertSeverity
+  message    String
+  isResolved Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([patientId, createdAt])
+  @@map("alerts")
+}
+
+// -----------------------------------------------------------------------------
+// Appointments
+// -----------------------------------------------------------------------------
+
+model Appointment {
+  id         String   @id @default(uuid())
+  patientId  String
+  patient    PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctorId   String
+  doctor     DoctorProfile @relation(fields: [doctorId], references: [id])
+  hospitalId String
+  hospital   Hospital @relation(fields: [hospitalId], references: [id])
+
+  scheduledAt DateTime
+  status      AppointmentStatus @default(SCHEDULED)
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  @@index([patientId, scheduledAt])
+  @@index([doctorId, scheduledAt])
+  @@map("appointments")
+}
+
+// -----------------------------------------------------------------------------
+// Gamification — confirmed as required, tied to daily-logging adherence.
+// -----------------------------------------------------------------------------
+
 model StreakRecord {
-  id             String   @id @default(uuid())
-  patientId      String   @unique
-  currentStreak  Int      @default(0)
-  longestStreak  Int      @default(0)
+  id             String    @id @default(uuid())
+  patientId      String    @unique
+  patient        PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  currentStreak  Int       @default(0)
+  longestStreak  Int       @default(0)
   lastLoggedDate DateTime?
 
   @@map("streak_records")
@@ -168,9 +352,24 @@ model StreakRecord {
 
 model Badge {
   id          String @id @default(uuid())
+  code        String @unique // stable identifier used in gamification logic, e.g. "STREAK_7"
   name        String
   description String
-  criteria    String // human-readable rule for now; formalize once badge logic is built
+  icon        String?
+
+  patientBadges PatientBadge[]
 
   @@map("badges")
+}
+
+model PatientBadge {
+  id        String   @id @default(uuid())
+  patientId String
+  patient   PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  badgeId   String
+  badge     Badge    @relation(fields: [badgeId], references: [id])
+  earnedAt  DateTime @default(now())
+
+  @@unique([patientId, badgeId]) // can't earn the same badge twice
+  @@map("patient_badges")
 }
