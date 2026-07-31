@@ -1,30 +1,53 @@
-// Patient-facing routes. Only PATIENT role can hit these, and
-// scopeToHospital + req.auth.userId together are what a real controller
-// would use to make sure a patient can only ever read/write THEIR OWN
-// records (scopeToHospital narrows to the hospital; the controller itself
-// should additionally filter by req.auth.userId — hospital scope alone
-// isn't enough for patient routes, since other patients share the hospital).
-//
-// Endpoints here are stubs — the actual Daily Log / Glucose Trends /
-// Medications controllers are the next phase. This file exists so the
-// RBAC chain is demonstrably wired end-to-end for this role already.
+// Patient routes. Full chain: authenticate -> authorize -> scopeToHospital
+// -> attachPatientProfile. That last step is new this phase — it's what
+// lets every controller below use req.patientProfileId without looking it
+// up itself (see middleware/attachProfile.js for why User.id != PatientProfile.id).
 
 import { Router } from "express";
+import { asyncHandler } from "../utils/asyncHandler.js";
 import { authenticate } from "../middleware/authenticate.js";
 import { authorize } from "../middleware/authorize.js";
 import { scopeToHospital } from "../middleware/scopeToHospital.js";
+import { attachPatientProfile } from "../middleware/attachProfile.js";
+import {
+  logGlucoseController,
+  logInsulinController,
+  logMealController,
+  logActivityController,
+  logNoteController,
+  getDailyLogController,
+  getGlucoseTrendsController,
+  createMedicationController,
+  listMedicationsController,
+  logDoseController,
+  getAdherenceController,
+  getGamificationStatusController,
+} from "../controllers/patient.controller.js";
 
 const router = Router();
 
-router.use(authenticate, authorize("PATIENT"), scopeToHospital);
+router.use(authenticate, authorize("PATIENT"), scopeToHospital, attachPatientProfile);
 
-router.get("/dashboard", (req, res) => {
-  // req.auth = { userId, role, hospitalId }, req.hospitalId set by scopeToHospital
-  res.json({
-    success: true,
-    message: "Patient dashboard placeholder — Daily Log / Glucose Trends / Medications land here next phase.",
-    scope: { userId: req.auth.userId, hospitalId: req.hospitalId },
-  });
-});
+// Logging — one endpoint per category, matching the dashboard's Quick Actions
+router.post("/logs/glucose", asyncHandler(logGlucoseController));
+router.post("/logs/insulin", asyncHandler(logInsulinController));
+router.post("/logs/meal", asyncHandler(logMealController));
+router.post("/logs/activity", asyncHandler(logActivityController));
+router.post("/logs/note", asyncHandler(logNoteController));
+
+// Daily Log screen — GET /daily-log?date=YYYY-MM-DD (defaults to today)
+router.get("/daily-log", asyncHandler(getDailyLogController));
+
+// Glucose Trends screen — GET /glucose-trends?days=7|14|30|90
+router.get("/glucose-trends", asyncHandler(getGlucoseTrendsController));
+
+// Medications screen
+router.post("/medications", asyncHandler(createMedicationController));
+router.get("/medications", asyncHandler(listMedicationsController));
+router.post("/medications/dose", asyncHandler(logDoseController));
+router.get("/medications/adherence", asyncHandler(getAdherenceController));
+
+// Gamification — streak + earned badges, for whatever UI surfaces them
+router.get("/gamification", asyncHandler(getGamificationStatusController));
 
 export default router;

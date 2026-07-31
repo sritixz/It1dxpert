@@ -1,26 +1,31 @@
-// Doctor-facing routes. DOCTOR and HOSPITAL_ADMIN can both reach these
-// (an admin may need doctor-level views too) — but a real "list my
-// patients" controller should still additionally filter by
-// assignedDoctorId when req.auth.role === "DOCTOR", vs. all patients in
-// the hospital when it's HOSPITAL_ADMIN. That distinction is a controller-
-// level concern, not a route-level one, so it's left as a comment here
-// rather than faked with a stub that would need rewriting anyway.
+// Doctor routes. DOCTOR and HOSPITAL_ADMIN share this group; attachDoctorProfile
+// only sets req.doctorProfileId for the DOCTOR role, which is what narrows
+// "all hospital patients" down to "just mine" inside the controllers.
 
 import { Router } from "express";
+import { asyncHandler } from "../utils/asyncHandler.js";
 import { authenticate } from "../middleware/authenticate.js";
 import { authorize } from "../middleware/authorize.js";
 import { scopeToHospital } from "../middleware/scopeToHospital.js";
+import { attachDoctorProfile } from "../middleware/attachProfile.js";
+import {
+  listPatientsController,
+  getPatientOverviewController,
+  getPatientGlucoseTrendsController,
+  getPatientTimelineController,
+  listAlertsController,
+  resolveAlertController,
+} from "../controllers/doctor.controller.js";
 
 const router = Router();
 
-router.use(authenticate, authorize("DOCTOR", "HOSPITAL_ADMIN"), scopeToHospital);
+router.use(authenticate, authorize("DOCTOR", "HOSPITAL_ADMIN"), scopeToHospital, attachDoctorProfile);
 
-router.get("/dashboard", (req, res) => {
-  res.json({
-    success: true,
-    message: "Doctor dashboard placeholder — patient monitoring, glucose graphs, alerts land here next phase.",
-    scope: { userId: req.auth.userId, role: req.auth.role, hospitalId: req.hospitalId },
-  });
-});
+router.get("/patients", asyncHandler(listPatientsController));
+router.get("/patients/:patientId", asyncHandler(getPatientOverviewController));
+router.get("/patients/:patientId/glucose-trends", asyncHandler(getPatientGlucoseTrendsController));
+router.get("/patients/:patientId/timeline", asyncHandler(getPatientTimelineController));
+router.get("/alerts", asyncHandler(listAlertsController));
+router.patch("/alerts/:alertId/resolve", asyncHandler(resolveAlertController));
 
 export default router;
