@@ -10,14 +10,7 @@
 import { prisma } from "../config/db.js";
 import { AppError } from "../utils/AppError.js";
 import { getGlucoseTrends, getPatientTimeline as getTimelineForPatient } from "./log.service.js";
-
-// Status thresholds — same values as alert.service.js, kept in sync
-// deliberately since "High"/"Low" on the Patients list should mean the same
-// thing as the alerts they'd otherwise trigger. If these ever become
-// per-doctor configurable (see Settings screen in the feature blueprint),
-// this is the one place that assumption would need to change.
-const HIGH_THRESHOLD = 180;
-const LOW_THRESHOLD = 70;
+import { DEFAULT_THRESHOLDS } from "./alert.service.js";
 
 // A patient with no glucose reading in this many days is considered
 // "Inactive" on the Patients list. Simplified from the mockup's broader
@@ -73,13 +66,21 @@ export async function listPatients({ hospitalId, doctorProfileId, status, page =
     ORDER BY "patientId", "loggedAt" DESC
   `;
 
+  // Per-doctor configurable thresholds — only applies when a single DOCTOR
+  // is viewing their own list (all patients share that one doctor's
+  // thresholds in that case). A HOSPITAL_ADMIN viewing the whole hospital
+  // has no single doctor's thresholds to apply, so falls back to platform
+  // defaults — individual doctors' custom thresholds only matter for
+  // deciding whether THEIR OWN alerts fire, not for an admin's overview.
+  const thresholds = doctorProfileId ? await getDoctorThresholds(doctorProfileId) : DEFAULT_THRESHOLDS;
+
   const latestByPatientId = new Map(latestReadings.map((r) => [r.patientId, r]));
   const inactiveCutoff = new Date();
   inactiveCutoff.setDate(inactiveCutoff.getDate() - INACTIVE_AFTER_DAYS);
 
   const withStatus = patients.map((patient) => {
     const latest = latestByPatientId.get(patient.id);
-    const computedStatus = computeStatus(latest, inactiveCutoff);
+    const computedStatus = computeStatus(latest, inactiveCutoff, thresholds);
     return {
       ...patient,
       currentGlucose: latest?.value ?? null,
@@ -103,12 +104,23 @@ export async function listPatients({ hospitalId, doctorProfileId, status, page =
   return { patients: paged, counts, page, pageSize, total: filtered.length };
 }
 
-function computeStatus(latestReading, inactiveCutoff) {
+async function getDoctorThresholds(doctorProfileId) {
+  const doctor = await prisma.doctorProfile.findUnique({
+    where: { id: doctorProfileId },
+    select: { highGlucoseThreshold: true, lowGlucoseThreshold: true },
+  });
+  return {
+    high: doctor?.highGlucoseThreshold ?? DEFAULT_THRESHOLDS.high,
+    low: doctor?.lowGlucoseThreshold ?? DEFAULT_THRESHOLDS.low,
+  };
+}
+
+function computeStatus(latestReading, inactiveCutoff, thresholds = DEFAULT_THRESHOLDS) {
   if (!latestReading || new Date(latestReading.loggedAt) < inactiveCutoff) {
     return "INACTIVE";
   }
-  if (latestReading.value > HIGH_THRESHOLD) return "HIGH";
-  if (latestReading.value < LOW_THRESHOLD) return "LOW";
+  if (latestReading.value > thresholds.high) return "HIGH";
+  if (latestReading.value < thresholds.low) return "LOW";
   return "IN_RANGE";
 }
 
@@ -149,7 +161,7 @@ export async function getPatientOverview(patientId, { hospitalId, doctorProfileI
     prisma.alert.findMany({ where: { patientId, isResolved: false }, orderBy: { createdAt: "desc" }, take: 10 }),
     prisma.streakRecord.findUnique({ where: { patientId } }),
     prisma.appointment.findFirst({
-      where: { patientId, status: "SCHEDULED", scheduledAt: { gte: new Date() } },
+      where: { patientId, status: { in: ["PENDING", "CONFIRMED"] }, scheduledAt: { gte: new Date() } },
       orderBy: { scheduledAt: "asc" },
     }),
   ]);
@@ -157,20 +169,98 @@ export async function getPatientOverview(patientId, { hospitalId, doctorProfileI
   return { patient, latestGlucose, recentAlerts, streak, upcomingAppointment };
 }
 
-export async function listAlerts({ hospitalId, doctorProfileId }) {
-  return prisma.alert.findMany({
+/**
+ * Alerts list. Two things happen before returning:
+ * 1. Missed-log detection runs first (see detectMissedLogAlerts below) —
+ *    there's no real background scheduler in this project, so rather than
+ *    a cron job creating these alerts overnight, they're detected lazily
+ *    right here, whenever a doctor actually loads the Alerts screen. It's
+ *    idempotent (won't create a duplicate for the same patient on the same
+ *    day), so calling it on every page load is safe, just not as
+ *    "real-time" as a proper scheduled job would be.
+ * 2. Optional `type` filter (HIGH_GLUCOSE | LOW_GLUCOSE | MISSED_LOG),
+ *    matching the Alerts screen's filter tabs.
+ */
+export async function listAlerts({ hospitalId, doctorProfileId, type }) {
+  await detectMissedLogAlerts({ hospitalId, doctorProfileId });
+
+  const patientFilter = doctorProfileId ? { assignedDoctorId: doctorProfileId } : {};
+
+  const alerts = await prisma.alert.findMany({
     where: {
       hospitalId,
       isResolved: false,
-      ...(doctorProfileId ? { patient: { assignedDoctorId: doctorProfileId } } : {}),
+      ...(type ? { type } : {}),
+      ...(doctorProfileId ? { patient: patientFilter } : {}),
     },
-    include: { patient: { select: { fullName: true } } },
+    include: { patient: { select: { fullName: true, dateOfBirth: true, gender: true, diabetesType: true } } },
     orderBy: { createdAt: "desc" },
   });
+
+  const summary = {
+    total: alerts.length,
+    highGlucose: alerts.filter((a) => a.type === "HIGH_GLUCOSE").length,
+    lowGlucose: alerts.filter((a) => a.type === "LOW_GLUCOSE").length,
+    missedLogs: alerts.filter((a) => a.type === "MISSED_LOG").length,
+  };
+
+  return { alerts, summary };
+}
+
+/**
+ * Checks every relevant patient for "no glucose log today" and creates a
+ * MISSED_LOG alert if one doesn't already exist for today. This is the
+ * "computed on read" substitute for a real scheduler mentioned above.
+ */
+async function detectMissedLogAlerts({ hospitalId, doctorProfileId }) {
+  const patients = await prisma.patientProfile.findMany({
+    where: { hospitalId, ...(doctorProfileId ? { assignedDoctorId: doctorProfileId } : {}) },
+    select: { id: true, hospitalId: true },
+  });
+  if (patients.length === 0) return;
+
+  const patientIds = patients.map((p) => p.id);
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const [loggedToday, alertedToday] = await Promise.all([
+    prisma.glucoseLog.findMany({
+      where: { patientId: { in: patientIds }, loggedAt: { gte: todayStart } },
+      select: { patientId: true },
+      distinct: ["patientId"],
+    }),
+    prisma.alert.findMany({
+      where: { patientId: { in: patientIds }, type: "MISSED_LOG", createdAt: { gte: todayStart } },
+      select: { patientId: true },
+      distinct: ["patientId"],
+    }),
+  ]);
+
+  const loggedTodaySet = new Set(loggedToday.map((l) => l.patientId));
+  const alertedTodaySet = new Set(alertedToday.map((a) => a.patientId));
+
+  const toCreate = patients.filter((p) => !loggedTodaySet.has(p.id) && !alertedTodaySet.has(p.id));
+  if (toCreate.length === 0) return;
+
+  await prisma.alert.createMany({
+    data: toCreate.map((p) => ({
+      patientId: p.id,
+      hospitalId: p.hospitalId,
+      type: "MISSED_LOG",
+      severity: "WARNING",
+      message: "No glucose reading logged today.",
+    })),
+  });
+}
+
+export async function markAlertRead(alertId, hospitalId) {
+  const alert = await prisma.alert.findFirst({ where: { id: alertId, hospitalId } });
+  if (!alert) throw new AppError("Alert not found", 404);
+  return prisma.alert.update({ where: { id: alertId }, data: { isRead: true } });
 }
 
 export async function resolveAlert(alertId, hospitalId) {
   const alert = await prisma.alert.findFirst({ where: { id: alertId, hospitalId } });
   if (!alert) throw new AppError("Alert not found", 404);
-  return prisma.alert.update({ where: { id: alertId }, data: { isResolved: true } });
+  return prisma.alert.update({ where: { id: alertId }, data: { isResolved: true, isRead: true } });
 }

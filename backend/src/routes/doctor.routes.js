@@ -14,6 +14,7 @@ import {
   getPatientGlucoseTrendsController,
   getPatientTimelineController,
   listAlertsController,
+  markAlertReadController,
   resolveAlertController,
 } from "../controllers/doctor.controller.js";
 
@@ -26,6 +27,7 @@ router.get("/patients/:patientId", asyncHandler(getPatientOverviewController));
 router.get("/patients/:patientId/glucose-trends", asyncHandler(getPatientGlucoseTrendsController));
 router.get("/patients/:patientId/timeline", asyncHandler(getPatientTimelineController));
 router.get("/alerts", asyncHandler(listAlertsController));
+router.patch("/alerts/:alertId/read", asyncHandler(markAlertReadController));
 router.patch("/alerts/:alertId/resolve", asyncHandler(resolveAlertController));
 
 export default router;

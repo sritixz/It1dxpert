@@ -48,12 +48,19 @@ export async function getPatientTimelineController(req, res) {
   res.json({ success: true, data });
 }
 
+// Alerts screen — GET /doctor/alerts?type=HIGH_GLUCOSE|LOW_GLUCOSE|MISSED_LOG
 export async function listAlertsController(req, res) {
-  const alerts = await doctorService.listAlerts({
+  const result = await doctorService.listAlerts({
     hospitalId: req.hospitalId,
     doctorProfileId: req.doctorProfileId,
+    type: req.query.type || undefined,
   });
-  res.json({ success: true, data: alerts });
+  res.json({ success: true, data: result });
+}
+
+export async function markAlertReadController(req, res) {
+  const alert = await doctorService.markAlertRead(req.params.alertId, req.hospitalId);
+  res.json({ success: true, data: alert });
 }
 
 export async function resolveAlertController(req, res) {

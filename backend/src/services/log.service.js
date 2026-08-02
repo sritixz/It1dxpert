@@ -16,13 +16,46 @@ async function afterLogCreated(patientId) {
 export async function createGlucoseLog({ patientId, hospitalId, value, context }) {
   const log = await prisma.glucoseLog.create({ data: { patientId, hospitalId, value, context } });
 
-  const alertInfo = checkGlucoseAlert(value);
+  // Per-doctor configurable thresholds (Settings screen) — look up the
+  // patient's assigned doctor's custom values, if any, and fall back to
+  // the platform defaults inside checkGlucoseAlert when they haven't set
+  // any. One extra query per glucose log; acceptable for this data volume.
+  const thresholds = await getThresholdsForPatient(patientId);
+  const alertInfo = checkGlucoseAlert(value, thresholds);
   if (alertInfo) {
     await prisma.alert.create({ data: { patientId, hospitalId, ...alertInfo } });
   }
 
   await afterLogCreated(patientId);
   return log;
+}
+
+async function getThresholdsForPatient(patientId) {
+  const patient = await prisma.patientProfile.findUnique({
+    where: { id: patientId },
+    select: {
+      assignedDoctor: {
+        select: {
+          highGlucoseThreshold: true,
+          lowGlucoseThreshold: true,
+          urgentHighThreshold: true,
+          urgentLowThreshold: true,
+        },
+      },
+    },
+  });
+
+  const doctorThresholds = patient?.assignedDoctor;
+  if (!doctorThresholds) return {};
+
+  // Only override fields the doctor actually set — null fields fall
+  // through to DEFAULT_THRESHOLDS inside checkGlucoseAlert.
+  return {
+    ...(doctorThresholds.highGlucoseThreshold != null && { high: doctorThresholds.highGlucoseThreshold }),
+    ...(doctorThresholds.lowGlucoseThreshold != null && { low: doctorThresholds.lowGlucoseThreshold }),
+    ...(doctorThresholds.urgentHighThreshold != null && { urgentHigh: doctorThresholds.urgentHighThreshold }),
+    ...(doctorThresholds.urgentLowThreshold != null && { urgentLow: doctorThresholds.urgentLowThreshold }),
+  };
 }
 
 export async function createInsulinLog({ patientId, hospitalId, units, insulinType }) {
