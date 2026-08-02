@@ -3,43 +3,49 @@
 // decision: it flags out-of-range numbers using fixed clinical thresholds,
 // it does not interpret, predict, or recommend anything.
 //
-// Thresholds are standard, widely-used ranges (ADA-aligned), not something
-// derived from patient data — same numbers apply to every patient. If
-// PGI wants per-patient custom thresholds later, that's a small change
-// here (read from patient profile instead of a constant), not a redesign.
+// Thresholds are standard, widely-used ranges (ADA-aligned) and are now
+// PER-DOCTOR CONFIGURABLE (Settings screen) — see DoctorProfile's threshold
+// fields in the schema. These constants are the fallback defaults used
+// whenever a doctor hasn't set their own.
 
-const HIGH_THRESHOLD = 180;
-const LOW_THRESHOLD = 70;
-const CRITICAL_HIGH = 250;
-const CRITICAL_LOW = 54;
+export const DEFAULT_THRESHOLDS = {
+  high: 180,
+  low: 70,
+  urgentHigh: 250,
+  urgentLow: 54,
+};
 
 /**
  * Returns alert data if the glucose value is out of range, otherwise null.
+ * `thresholds` is optional — pass a patient's assigned doctor's custom
+ * values if they've set any; falls back to DEFAULT_THRESHOLDS otherwise.
  * Caller (log.service.js) decides whether to persist it as an Alert row.
  */
-export function checkGlucoseAlert(value) {
-  if (value >= CRITICAL_HIGH) {
+export function checkGlucoseAlert(value, thresholds = {}) {
+  const { high, low, urgentHigh, urgentLow } = { ...DEFAULT_THRESHOLDS, ...thresholds };
+
+  if (value >= urgentHigh) {
     return {
       type: "HIGH_GLUCOSE",
       severity: "CRITICAL",
       message: `Glucose reading of ${value} mg/dL is critically high.`,
     };
   }
-  if (value > HIGH_THRESHOLD) {
+  if (value > high) {
     return {
       type: "HIGH_GLUCOSE",
       severity: "WARNING",
       message: `Glucose reading of ${value} mg/dL is above target range.`,
     };
   }
-  if (value <= CRITICAL_LOW) {
+  if (value <= urgentLow) {
     return {
       type: "LOW_GLUCOSE",
       severity: "CRITICAL",
       message: `Glucose reading of ${value} mg/dL is critically low.`,
     };
   }
-  if (value < LOW_THRESHOLD) {
+  if (value < low) {
     return {
       type: "LOW_GLUCOSE",
       severity: "WARNING",
