@@ -33,3 +33,73 @@ export async function fetchPatientTimeline(patientId, limit = 20) {
   });
   return data.data;
 }
+
+// --- Alerts ---
+// type is one of HIGH_GLUCOSE | LOW_GLUCOSE | MISSED_LOG, or undefined for "All".
+// Response shape: { alerts, summary: { total, highGlucose, lowGlucose, missedLogs } }
+export async function fetchAlerts({ type } = {}) {
+  const { data } = await apiClient.get("/doctor/alerts", { params: { type } });
+  return data.data;
+}
+
+export async function markAlertRead(alertId) {
+  const { data } = await apiClient.patch(`/doctor/alerts/${alertId}/read`);
+  return data.data;
+}
+
+export async function resolveAlert(alertId) {
+  const { data } = await apiClient.patch(`/doctor/alerts/${alertId}/resolve`);
+  return data.data;
+}
+
+// --- Appointments ---
+export async function fetchAppointments({ status, when } = {}) {
+  const { data } = await apiClient.get("/doctor/appointments", { params: { status, when } });
+  return data.data;
+}
+
+export async function fetchAppointmentStats() {
+  const { data } = await apiClient.get("/doctor/appointments/stats");
+  return data.data;
+}
+
+export async function fetchCalendarSummary(year, month) {
+  const { data } = await apiClient.get("/doctor/appointments/calendar", { params: { year, month } });
+  return data.data;
+}
+
+export async function createAppointment(payload) {
+  const { data } = await apiClient.post("/doctor/appointments", payload);
+  return data.data;
+}
+
+export async function updateAppointmentStatus(appointmentId, status) {
+  const { data } = await apiClient.patch(`/doctor/appointments/${appointmentId}/status`, { status });
+  return data.data;
+}
+
+// --- Settings ---
+export async function fetchSettings() {
+  const { data } = await apiClient.get("/doctor/settings");
+  return data.data;
+}
+
+export async function updateProfileSettings(payload) {
+  const { data } = await apiClient.patch("/doctor/settings/profile", payload);
+  return data.data;
+}
+
+export async function updateClinicSettings(payload) {
+  const { data } = await apiClient.patch("/doctor/settings/clinic", payload);
+  return data.data;
+}
+
+export async function updateNotificationSettings(payload) {
+  const { data } = await apiClient.patch("/doctor/settings/notifications", payload);
+  return data.data;
+}
+
+export async function updateAlertPreferences(payload) {
+  const { data } = await apiClient.patch("/doctor/settings/alert-preferences", payload);
+  return data.data;
+}

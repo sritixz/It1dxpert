@@ -15,7 +15,9 @@ export const NAV_CONFIG = {
     { label: "Dashboard", path: "/doctor", icon: "home" },
     { label: "My Patients", path: "/doctor/patients", icon: "users" },
     { label: "Alerts", path: "/doctor/alerts", icon: "bell" },
+    { label: "Appointments", path: "/doctor/appointments", icon: "calendar" },
     { label: "Settings", path: "/doctor/settings", icon: "settings" },
+    { label: "Help & Support", path: "/doctor/help", icon: "help" },
   ],
   HOSPITAL_ADMIN: [
     { label: "Dashboard", path: "/admin", icon: "home" },

@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import {
   Home, ClipboardList, LineChart, Pill, Award, Settings,
-  Users, Bell, User, Building2, ShieldCheck, Activity,
+  Users, Bell, User, Building2, ShieldCheck, Activity, Calendar, HelpCircle,
 } from "lucide-react";
 
 const ICONS = {
@@ -16,6 +16,8 @@ const ICONS = {
   user: User,
   building: Building2,
   shield: ShieldCheck,
+  calendar: Calendar,
+  help: HelpCircle,
 };
 
 export function Sidebar({ navItems }) {
