@@ -64,6 +64,7 @@ enum AppointmentMode {
 model Hospital {
   id           String   @id @default(uuid())
   name         String
+  type         String   @default("Hospital") // e.g. "Hospital", "Diabetes Center", "Specialty Clinic" — free text, drives the admin Hospitals screen's type breakdown
   address      String?
   contactEmail String?
   contactPhone String?
@@ -94,6 +95,12 @@ model User {
   passwordHash String
   role         Role
   isActive     Boolean  @default(true)
+  // Set on every successful login (see auth.service.js). Exists specifically
+  // so the admin Dashboard's "Active Users (7 days)" stat is a real query
+  // against real data, not a number that's always going to say "0" or be
+  // hardcoded — if this field didn't exist, that stat would have to be
+  // faked or omitted.
+  lastLoginAt  DateTime?
 
   // Nullable because SUPER_ADMIN is platform-wide. Every other role MUST
   // have a hospitalId — enforced in the application layer.

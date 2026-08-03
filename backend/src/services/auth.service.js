@@ -73,6 +73,12 @@ export async function login({ email, password }) {
     throw new AppError("Invalid email or password", 401);
   }
 
+  // Real login tracking — backs the admin Dashboard's "Active Users (7
+  // days)" stat. Fire-and-forget isn't appropriate here (we want it
+  // recorded before responding), but it's not on the critical path for
+  // whether login succeeds, so a failure here shouldn't fail the login.
+  await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } }).catch(() => {});
+
   return issueTokens(user);
 }
 
