@@ -1,21 +1,40 @@
-// Appointment service — backs the Appointments screen. A doctor manages
-// their own appointments; a HOSPITAL_ADMIN can see the whole hospital's,
-// same access pattern as everywhere else on the doctor side.
+// Appointment service — backs both the doctor's and patient's Appointments
+// screens. A doctor manages their own appointments; a HOSPITAL_ADMIN can
+// see the whole hospital's; a patient sees only their own.
 
 import { prisma } from "../config/db.js";
 import { AppError } from "../utils/AppError.js";
 
-export async function createAppointment({ hospitalId, doctorId, patientId, scheduledAt, type, purpose, mode, notes }) {
-  const [patient, doctor] = await Promise.all([
-    prisma.patientProfile.findFirst({ where: { id: patientId, hospitalId } }),
-    prisma.doctorProfile.findFirst({ where: { id: doctorId, hospitalId } }),
-  ]);
+/**
+ * Creates an appointment. Two shapes:
+ * - doctorId set: a real on-platform doctor (validated to exist in the hospital)
+ * - doctorId omitted + providerName/providerType set: an external provider
+ *   (lab, specialist not on the platform) — no validation possible since
+ *   there's no record to check against, this is just descriptive text.
+ * Called from both doctor-initiated creation (status defaults PENDING,
+ * doctor can immediately confirm) and patient-initiated requests (also
+ * PENDING — a patient requesting an appointment doesn't auto-confirm it).
+ */
+export async function createAppointment({
+  hospitalId, doctorId, providerName, providerType, patientId,
+  scheduledAt, type, purpose, mode, location, notes,
+}) {
+  const patient = await prisma.patientProfile.findFirst({ where: { id: patientId, hospitalId } });
   if (!patient) throw new AppError("Patient not found in this hospital", 404);
-  if (!doctor) throw new AppError("Doctor not found in this hospital", 404);
+
+  if (doctorId) {
+    const doctor = await prisma.doctorProfile.findFirst({ where: { id: doctorId, hospitalId } });
+    if (!doctor) throw new AppError("Doctor not found in this hospital", 404);
+  } else if (!providerName) {
+    throw new AppError("Either doctorId or providerName is required", 400);
+  }
 
   return prisma.appointment.create({
-    data: { hospitalId, doctorId, patientId, scheduledAt: new Date(scheduledAt), type, purpose, mode, notes },
-    include: { patient: { select: { fullName: true } } },
+    data: {
+      hospitalId, doctorId: doctorId || null, providerName, providerType,
+      patientId, scheduledAt: new Date(scheduledAt), type, purpose, mode, location, notes,
+    },
+    include: { patient: { select: { fullName: true } }, doctor: { select: { fullName: true } } },
   });
 }
 
@@ -23,11 +42,15 @@ export async function createAppointment({ hospitalId, doctorId, patientId, sched
  * List appointments with the same filter tabs as the mockup: status, or
  * the special "today" / "upcoming" time-window filters. `status` and
  * `when` are mutually independent — either, both, or neither can be set.
+ * `doctorProfileId` scopes to a doctor's own appointments; `patientProfileId`
+ * scopes to a patient's own — used by the doctor and patient Appointments
+ * screens respectively, never both at once.
  */
-export async function listAppointments({ hospitalId, doctorProfileId, status, when }) {
+export async function listAppointments({ hospitalId, doctorProfileId, patientProfileId, status, when }) {
   const where = {
     hospitalId,
     ...(doctorProfileId ? { doctorId: doctorProfileId } : {}),
+    ...(patientProfileId ? { patientId: patientProfileId } : {}),
     ...(status ? { status } : {}),
   };
 
@@ -43,17 +66,22 @@ export async function listAppointments({ hospitalId, doctorProfileId, status, wh
 
   return prisma.appointment.findMany({
     where,
-    include: { patient: { select: { fullName: true, dateOfBirth: true, gender: true, diabetesType: true } } },
+    include: {
+      patient: { select: { fullName: true, dateOfBirth: true, gender: true, diabetesType: true } },
+      doctor: { select: { fullName: true, specialization: true } },
+    },
     orderBy: { scheduledAt: "asc" },
   });
 }
 
 /**
- * Summary stats for the 4 stat cards: today's count, upcoming-7-days count,
- * pending count, and completed-this-month count.
+ * Summary stats. Doctor view: today/upcoming-7-days/pending/completed-this-month.
+ * Patient view uses the same underlying counts but the frontend labels them
+ * to match its own stat cards (Upcoming/Completed This Year/Total This
+ * Year/Reminders Set) — see getPatientAppointmentStats below for that shape.
  */
-export async function getAppointmentStats({ hospitalId, doctorProfileId }) {
-  const doctorFilter = doctorProfileId ? { doctorId: doctorProfileId } : {};
+export async function getAppointmentStats({ hospitalId, doctorProfileId, patientProfileId }) {
+  const scopeFilter = doctorProfileId ? { doctorId: doctorProfileId } : patientProfileId ? { patientId: patientProfileId } : {};
 
   const now = new Date();
   const todayStart = new Date(now);
@@ -67,20 +95,40 @@ export async function getAppointmentStats({ hospitalId, doctorProfileId }) {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
   const [today, upcoming7Days, pending, completedThisMonth] = await Promise.all([
-    prisma.appointment.count({ where: { hospitalId, ...doctorFilter, scheduledAt: { gte: todayStart, lt: todayEnd } } }),
-    prisma.appointment.count({ where: { hospitalId, ...doctorFilter, scheduledAt: { gte: now, lte: sevenDaysOut } } }),
-    prisma.appointment.count({ where: { hospitalId, ...doctorFilter, status: "PENDING" } }),
-    prisma.appointment.count({ where: { hospitalId, ...doctorFilter, status: "COMPLETED", scheduledAt: { gte: monthStart } } }),
+    prisma.appointment.count({ where: { hospitalId, ...scopeFilter, scheduledAt: { gte: todayStart, lt: todayEnd } } }),
+    prisma.appointment.count({ where: { hospitalId, ...scopeFilter, scheduledAt: { gte: now, lte: sevenDaysOut } } }),
+    prisma.appointment.count({ where: { hospitalId, ...scopeFilter, status: "PENDING" } }),
+    prisma.appointment.count({ where: { hospitalId, ...scopeFilter, status: "COMPLETED", scheduledAt: { gte: monthStart } } }),
   ]);
 
   return { today, upcoming7Days, pending, completedThisMonth };
 }
 
 /**
+ * Patient-side stat cards: Upcoming, Completed (This Year), Total
+ * Scheduled (This Year), Reminders Set — different shape from the
+ * doctor's cards, so kept as a separate function rather than overloading
+ * getAppointmentStats with two unrelated return shapes.
+ */
+export async function getPatientAppointmentStats(patientProfileId) {
+  const now = new Date();
+  const yearStart = new Date(now.getFullYear(), 0, 1);
+
+  const [upcoming, completedThisYear, totalThisYear, remindersSet] = await Promise.all([
+    prisma.appointment.count({ where: { patientId: patientProfileId, status: { in: ["PENDING", "CONFIRMED"] }, scheduledAt: { gte: now } } }),
+    prisma.appointment.count({ where: { patientId: patientProfileId, status: "COMPLETED", scheduledAt: { gte: yearStart } } }),
+    prisma.appointment.count({ where: { patientId: patientProfileId, scheduledAt: { gte: yearStart } } }),
+    prisma.appointment.count({ where: { patientId: patientProfileId, reminderEnabled: true, scheduledAt: { gte: now } } }),
+  ]);
+
+  return { upcoming, completedThisYear, totalThisYear, remindersSet };
+}
+
+/**
  * Per-day appointment counts for a given month — backs the calendar
  * widget's dot indicators. Returns { "2025-05-20": { CONFIRMED: 3, PENDING: 1 }, ... }
  */
-export async function getCalendarSummary({ hospitalId, doctorProfileId, year, month }) {
+export async function getCalendarSummary({ hospitalId, doctorProfileId, patientProfileId, year, month }) {
   const start = new Date(year, month - 1, 1);
   const end = new Date(year, month, 1);
 
@@ -88,6 +136,7 @@ export async function getCalendarSummary({ hospitalId, doctorProfileId, year, mo
     where: {
       hospitalId,
       ...(doctorProfileId ? { doctorId: doctorProfileId } : {}),
+      ...(patientProfileId ? { patientId: patientProfileId } : {}),
       scheduledAt: { gte: start, lt: end },
     },
     select: { scheduledAt: true, status: true },

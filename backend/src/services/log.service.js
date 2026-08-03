@@ -5,6 +5,7 @@
 // can't accidentally forget to wire up streaks/badges.
 
 import { prisma } from "../config/db.js";
+import { AppError } from "../utils/AppError.js";
 import { recordDailyActivity, checkAndAwardBadges } from "./gamification.service.js";
 import { checkGlucoseAlert } from "./alert.service.js";
 
@@ -58,10 +59,87 @@ async function getThresholdsForPatient(patientId) {
   };
 }
 
-export async function createInsulinLog({ patientId, hospitalId, units, insulinType }) {
-  const log = await prisma.insulinLog.create({ data: { patientId, hospitalId, units, insulinType } });
+export async function createInsulinLog({ patientId, hospitalId, units, insulinType, reason }) {
+  const log = await prisma.insulinLog.create({ data: { patientId, hospitalId, units, insulinType, reason } });
   await afterLogCreated(patientId);
   return log;
+}
+
+export async function updateInsulinLog(logId, patientId, { units, insulinType, reason }) {
+  const existing = await prisma.insulinLog.findFirst({ where: { id: logId, patientId } });
+  if (!existing) throw new AppError("Insulin log not found", 404);
+  return prisma.insulinLog.update({ where: { id: logId }, data: { units, insulinType, reason } });
+}
+
+export async function deleteInsulinLog(logId, patientId) {
+  const existing = await prisma.insulinLog.findFirst({ where: { id: logId, patientId } });
+  if (!existing) throw new AppError("Insulin log not found", 404);
+  return prisma.insulinLog.delete({ where: { id: logId } });
+}
+
+/**
+ * Insulin Records screen: list + summary stats (total daily dose, avg/day,
+ * total doses, most-used type, rapid-vs-long split) + a per-day trend for
+ * the stacked bar chart. Same pattern as getGlucoseTrends — one function
+ * computing everything the screen needs from raw log rows.
+ */
+export async function getInsulinSummary(patientId, days = 7) {
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+
+  const logs = await prisma.insulinLog.findMany({
+    where: { patientId, loggedAt: { gte: since } },
+    orderBy: { loggedAt: "desc" },
+  });
+
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayTotal = logs
+    .filter((l) => new Date(l.loggedAt) >= todayStart)
+    .reduce((sum, l) => sum + l.units, 0);
+
+  const totalUnits = logs.reduce((sum, l) => sum + l.units, 0);
+  const avgPerDay = days > 0 ? round(totalUnits / days) : 0;
+
+  // "Rapid" / "Long" bucketing is a simple substring match against
+  // insulinType — matches the free-text pattern already used for
+  // mealType/activityType elsewhere, not a strict enum.
+  const isRapid = (l) => (l.insulinType || "").toLowerCase().includes("rapid");
+  const isLong = (l) => (l.insulinType || "").toLowerCase().includes("long");
+
+  const rapidTotal = logs.filter(isRapid).reduce((sum, l) => sum + l.units, 0);
+  const longTotal = logs.filter(isLong).reduce((sum, l) => sum + l.units, 0);
+
+  const typeCounts = {};
+  for (const log of logs) {
+    const key = log.insulinType || "Unspecified";
+    typeCounts[key] = (typeCounts[key] || 0) + 1;
+  }
+  const mostUsedType = Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+
+  // Per-day trend for the stacked bar chart — grouped by calendar day.
+  const dailyTotals = {};
+  for (const log of logs) {
+    const dayKey = new Date(log.loggedAt).toISOString().slice(0, 10);
+    dailyTotals[dayKey] = dailyTotals[dayKey] || { rapid: 0, long: 0 };
+    if (isRapid(log)) dailyTotals[dayKey].rapid += log.units;
+    else if (isLong(log)) dailyTotals[dayKey].long += log.units;
+  }
+  const dailyTrend = Object.entries(dailyTotals)
+    .map(([date, totals]) => ({ date, ...totals }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  return {
+    logs,
+    stats: {
+      totalDailyDose: round(todayTotal),
+      avgPerDay,
+      totalDoses: logs.length,
+      mostUsedType,
+    },
+    breakdown: { rapidTotal: round(rapidTotal), longTotal: round(longTotal) },
+    dailyTrend,
+  };
 }
 
 export async function createMealLog({ patientId, hospitalId, carbs, mealType, notes }) {
@@ -74,6 +152,77 @@ export async function createActivityLog({ patientId, hospitalId, durationMins, a
   const log = await prisma.activityLog.create({ data: { patientId, hospitalId, durationMins, activityType } });
   await afterLogCreated(patientId);
   return log;
+}
+
+export async function updateActivityLog(logId, patientId, { durationMins, activityType }) {
+  const existing = await prisma.activityLog.findFirst({ where: { id: logId, patientId } });
+  if (!existing) throw new AppError("Activity log not found", 404);
+  return prisma.activityLog.update({ where: { id: logId }, data: { durationMins, activityType } });
+}
+
+export async function deleteActivityLog(logId, patientId) {
+  const existing = await prisma.activityLog.findFirst({ where: { id: logId, patientId } });
+  if (!existing) throw new AppError("Activity log not found", 404);
+  return prisma.activityLog.delete({ where: { id: logId } });
+}
+
+/**
+ * Activity screen summary. Duration-only, deliberately — steps and
+ * calories don't exist in the schema (see blueprint: both are blocked on
+ * a device-integration/estimation-method decision that hasn't been made).
+ * This computes everything that CAN be answered from what's actually
+ * logged: total time, breakdown by activity type, a weekly trend against
+ * the patient's goal, and which day was most active.
+ */
+export async function getActivitySummary(patientId, weeklyGoalMins = 150) {
+  const since = new Date();
+  since.setDate(since.getDate() - 7);
+
+  const logs = await prisma.activityLog.findMany({
+    where: { patientId, loggedAt: { gte: since } },
+    orderBy: { loggedAt: "desc" },
+  });
+
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayTotal = logs
+    .filter((l) => new Date(l.loggedAt) >= todayStart)
+    .reduce((sum, l) => sum + l.durationMins, 0);
+
+  const weekTotal = logs.reduce((sum, l) => sum + l.durationMins, 0);
+
+  const byType = {};
+  for (const log of logs) {
+    const key = log.activityType || "Other";
+    byType[key] = (byType[key] || 0) + log.durationMins;
+  }
+  const breakdown = Object.entries(byType).map(([activityType, mins]) => ({ activityType, mins }));
+
+  const byDay = {};
+  for (const log of logs) {
+    const dayKey = new Date(log.loggedAt).toISOString().slice(0, 10);
+    byDay[dayKey] = (byDay[dayKey] || 0) + log.durationMins;
+  }
+  const dailyTrend = Object.entries(byDay)
+    .map(([date, mins]) => ({ date, mins }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  const mostActiveDay = dailyTrend.length
+    ? dailyTrend.reduce((max, day) => (day.mins > max.mins ? day : max))
+    : null;
+
+  return {
+    logs,
+    stats: {
+      todayTotalMins: todayTotal,
+      weekTotalMins: weekTotal,
+      weeklyGoalMins,
+      weeklyProgressPercent: weeklyGoalMins > 0 ? round((weekTotal / weeklyGoalMins) * 100) : 0,
+    },
+    breakdown,
+    dailyTrend,
+    mostActiveDay,
+  };
 }
 
 // Free-text notes (e.g. "felt tired in the evening") — deliberately NOT

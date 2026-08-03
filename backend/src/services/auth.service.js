@@ -76,6 +76,25 @@ export async function login({ email, password }) {
   return issueTokens(user);
 }
 
+/**
+ * Password change — available to any authenticated role (not
+ * patient-specific), since this belongs at the auth layer rather than any
+ * one dashboard's settings. Requires the current password to be correct
+ * before setting a new one, same as any reasonable "change password" flow.
+ */
+export async function changePassword(userId, { currentPassword, newPassword }) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new AppError("User not found", 404);
+
+  const matches = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!matches) {
+    throw new AppError("Current password is incorrect", 401);
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+  await prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+}
+
 function issueTokens(user) {
   const claims = { userId: user.id, role: user.role, hospitalId: user.hospitalId };
 
