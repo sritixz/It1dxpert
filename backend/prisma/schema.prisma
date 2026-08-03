@@ -125,6 +125,26 @@ model PatientProfile {
   diabetesType  DiabetesType @default(TYPE_1)
   diagnosisDate DateTime?
 
+  // Emergency Contact (Settings screen — Account tab)
+  emergencyContactName     String?
+  emergencyContactPhone    String?
+  emergencyContactRelation String?
+
+  // App Preferences (Settings screen). Deliberately NOT including a
+  // "Connected Devices" concept here — that's the CGM/device-integration
+  // decision flagged repeatedly in the blueprint, kept as its own open
+  // question rather than bolted onto this round's build.
+  preferredUnits String  @default("mg/dL") // "mg/dL" | "mmol/L"
+  timezone       String  @default("Asia/Kolkata")
+  language       String  @default("en")
+  theme          String  @default("light") // "light" | "dark"
+
+  // Activity goal (Activity screen). A single weekly-minutes target — the
+  // reference mockup showed inconsistent numbers (a "150/300" progress
+  // bar next to a "300 min/week" chart goal on the same screen); rather
+  // than replicate that inconsistency, this is one clear value.
+  weeklyActivityGoalMins Int @default(150)
+
   assignedDoctorId String?
   assignedDoctor   DoctorProfile? @relation(fields: [assignedDoctorId], references: [id])
 
@@ -236,6 +256,7 @@ model InsulinLog {
 
   units       Float
   insulinType String? // e.g. "rapid-acting", "long-acting"
+  reason      String? // e.g. "Breakfast", "Lunch", "Basal" — new for Insulin Records screen
   loggedAt    DateTime @default(now())
 
   @@index([patientId, loggedAt])
@@ -372,20 +393,38 @@ model Appointment {
   id         String   @id @default(uuid())
   patientId  String
   patient    PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  doctorId   String
-  doctor     DoctorProfile @relation(fields: [doctorId], references: [id])
+
+  // doctorId is now OPTIONAL. Reasoning: a patient's appointments can span
+  // providers who aren't on the platform at all — a lab test, an external
+  // specialist, a diabetes educator session. Forcing every appointment to
+  // reference a real DoctorProfile would make those impossible to record.
+  // When doctorId is set, it's a real on-platform doctor (used for the
+  // doctor's own Appointments screen/queries). When it's null,
+  // providerName/providerType describe the external provider instead.
+  doctorId     String?
+  doctor       DoctorProfile? @relation(fields: [doctorId], references: [id])
+  providerName String? // e.g. "Dr. Michael Lee", "City Health Lab" — used when doctorId is null
+  providerType String? // e.g. "Ophthalmologist", "Lab", "Diabetes Educator" — free text, not a platform role
+
   hospitalId String
   hospital   Hospital @relation(fields: [hospitalId], references: [id])
 
   scheduledAt DateTime
-  type        String            @default("Follow-up") // "Follow-up" | "Consultation"
+  // Broadened from the original "Follow-up" | "Consultation" pair — the
+  // patient-side mockup showed Diabetes Education, Lab Test, and Eye Exam
+  // too. Kept as free text rather than a strict enum since this list will
+  // likely keep growing with real usage; validation happens at the API
+  // layer (Zod), not the database.
+  type        String            @default("Follow-up")
   purpose     String? // e.g. "Routine Checkup", "Insulin Adjustment"
+  location    String? // e.g. "Main Street Medical Center, Room 305" — shown in the patient mockup, wasn't captured before
   // "Video Call" is a label only right now — no real video-call
   // infrastructure (Zoom/Meet link generation, etc.) is wired up. Storing
   // the mode lets the UI show the right icon/label; actually joining a
   // call is out of scope until a real video provider decision is made.
   mode        AppointmentMode   @default(IN_CLINIC)
   status      AppointmentStatus @default(PENDING)
+  reminderEnabled Boolean       @default(true)
   notes       String?
   createdAt   DateTime          @default(now())
 

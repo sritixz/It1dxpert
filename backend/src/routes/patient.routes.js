@@ -12,8 +12,14 @@ import { attachPatientProfile } from "../middleware/attachProfile.js";
 import {
   logGlucoseController,
   logInsulinController,
+  listInsulinLogsController,
+  updateInsulinLogController,
+  deleteInsulinLogController,
   logMealController,
   logActivityController,
+  getActivitySummaryController,
+  updateActivityLogController,
+  deleteActivityLogController,
   logNoteController,
   getDailyLogController,
   getGlucoseTrendsController,
@@ -34,6 +40,16 @@ router.post("/logs/insulin", asyncHandler(logInsulinController));
 router.post("/logs/meal", asyncHandler(logMealController));
 router.post("/logs/activity", asyncHandler(logActivityController));
 router.post("/logs/note", asyncHandler(logNoteController));
+
+// Insulin Records screen — list/summary + edit/delete individual entries
+router.get("/insulin-records", asyncHandler(listInsulinLogsController));
+router.patch("/logs/insulin/:logId", asyncHandler(updateInsulinLogController));
+router.delete("/logs/insulin/:logId", asyncHandler(deleteInsulinLogController));
+
+// Activity screen — summary + edit/delete individual entries
+router.get("/activity-summary", asyncHandler(getActivitySummaryController));
+router.patch("/logs/activity/:logId", asyncHandler(updateActivityLogController));
+router.delete("/logs/activity/:logId", asyncHandler(deleteActivityLogController));
 
 // Daily Log screen — GET /daily-log?date=YYYY-MM-DD (defaults to today)
 router.get("/daily-log", asyncHandler(getDailyLogController));
