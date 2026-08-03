@@ -8,6 +8,8 @@ import morgan from "morgan";
 
 import authRoutes from "./routes/auth.routes.js";
 import patientRoutes from "./routes/patient.routes.js";
+import patientAppointmentRoutes from "./routes/patientAppointment.routes.js";
+import patientSettingsRoutes from "./routes/patientSettings.routes.js";
 import doctorRoutes from "./routes/doctor.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
 import settingsRoutes from "./routes/settings.routes.js";
@@ -44,6 +46,8 @@ app.get("/health", (req, res) => {
 // the more specific paths first means Express matches and fully handles
 // them without ever reaching the broader /api/doctor mount.
 app.use("/api/auth", authRoutes);
+app.use("/api/patient/appointments", patientAppointmentRoutes);
+app.use("/api/patient/settings", patientSettingsRoutes);
 app.use("/api/patient", patientRoutes);
 app.use("/api/doctor/settings", settingsRoutes);
 app.use("/api/doctor/appointments", appointmentRoutes);
