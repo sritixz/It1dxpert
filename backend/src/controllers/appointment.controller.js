@@ -7,6 +7,7 @@ const createSchema = z.object({
   type: z.enum(["Follow-up", "Consultation"]).default("Follow-up"),
   purpose: z.string().optional(),
   mode: z.enum(["VIDEO_CALL", "IN_CLINIC"]).default("IN_CLINIC"),
+  location: z.string().optional(),
   notes: z.string().optional(),
 });
 

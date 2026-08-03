@@ -9,9 +9,11 @@ import * as logService from "../services/log.service.js";
 import * as medicationService from "../services/medication.service.js";
 
 const glucoseSchema = z.object({ value: z.number().positive(), context: z.string().optional() });
-const insulinSchema = z.object({ units: z.number().positive(), insulinType: z.string().optional() });
+const insulinSchema = z.object({ units: z.number().positive(), insulinType: z.string().optional(), reason: z.string().optional() });
+const insulinUpdateSchema = insulinSchema.partial();
 const mealSchema = z.object({ carbs: z.number().nonnegative(), mealType: z.string().optional(), notes: z.string().optional() });
 const activitySchema = z.object({ durationMins: z.number().int().positive(), activityType: z.string().optional() });
+const activityUpdateSchema = activitySchema.partial();
 const noteSchema = z.object({ content: z.string().min(1).max(1000) });
 
 const medicationSchema = z.object({
@@ -43,6 +45,24 @@ export async function logInsulinController(req, res) {
   res.status(201).json({ success: true, data: log });
 }
 
+// Insulin Records screen
+export async function listInsulinLogsController(req, res) {
+  const days = Number(req.query.days) || 7;
+  const data = await logService.getInsulinSummary(req.patientProfileId, days);
+  res.json({ success: true, data });
+}
+
+export async function updateInsulinLogController(req, res) {
+  const data = insulinUpdateSchema.parse(req.body);
+  const log = await logService.updateInsulinLog(req.params.logId, req.patientProfileId, data);
+  res.json({ success: true, data: log });
+}
+
+export async function deleteInsulinLogController(req, res) {
+  await logService.deleteInsulinLog(req.params.logId, req.patientProfileId);
+  res.json({ success: true, data: null });
+}
+
 export async function logMealController(req, res) {
   const data = mealSchema.parse(req.body);
   const log = await logService.createMealLog({ patientId: req.patientProfileId, hospitalId: req.hospitalId, ...data });
@@ -53,6 +73,28 @@ export async function logActivityController(req, res) {
   const data = activitySchema.parse(req.body);
   const log = await logService.createActivityLog({ patientId: req.patientProfileId, hospitalId: req.hospitalId, ...data });
   res.status(201).json({ success: true, data: log });
+}
+
+// Activity screen — duration-only, deliberately (steps/calories blocked
+// on the device-integration decision, see log.service.js's getActivitySummary comment)
+export async function getActivitySummaryController(req, res) {
+  const patient = await prisma.patientProfile.findUnique({
+    where: { id: req.patientProfileId },
+    select: { weeklyActivityGoalMins: true },
+  });
+  const data = await logService.getActivitySummary(req.patientProfileId, patient?.weeklyActivityGoalMins);
+  res.json({ success: true, data });
+}
+
+export async function updateActivityLogController(req, res) {
+  const data = activityUpdateSchema.parse(req.body);
+  const log = await logService.updateActivityLog(req.params.logId, req.patientProfileId, data);
+  res.json({ success: true, data: log });
+}
+
+export async function deleteActivityLogController(req, res) {
+  await logService.deleteActivityLog(req.params.logId, req.patientProfileId);
+  res.json({ success: true, data: null });
 }
 
 // Free-text note — shows up in the doctor's merged event timeline
