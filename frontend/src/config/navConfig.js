@@ -24,14 +24,18 @@ export const NAV_CONFIG = {
   ],
   HOSPITAL_ADMIN: [
     { label: "Dashboard", path: "/admin", icon: "home" },
+    { label: "Hospitals", path: "/admin/hospitals", icon: "building" },
     { label: "Doctors", path: "/admin/doctors", icon: "users" },
     { label: "Patients", path: "/admin/patients", icon: "user" },
+    { label: "Users", path: "/admin/users", icon: "shield" },
+    { label: "Support Tickets", path: "/admin/support-tickets", icon: "help" },
     { label: "Settings", path: "/admin/settings", icon: "settings" },
   ],
   SUPER_ADMIN: [
     { label: "Dashboard", path: "/admin", icon: "home" },
     { label: "Hospitals", path: "/admin/hospitals", icon: "building" },
-    { label: "Hospital Admins", path: "/admin/hospital-admins", icon: "shield" },
+    { label: "Users", path: "/admin/users", icon: "shield" },
+    { label: "Support Tickets", path: "/admin/support-tickets", icon: "help" },
     { label: "Settings", path: "/admin/settings", icon: "settings" },
   ],
 };
