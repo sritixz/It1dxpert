@@ -18,7 +18,10 @@ import { AlertsPage } from "./pages/doctor/AlertsPage.jsx";
 import { SettingsPage } from "./pages/doctor/SettingsPage.jsx";
 import { AppointmentsPage } from "./pages/doctor/AppointmentsPage.jsx";
 import { HelpSupportPage } from "./pages/doctor/HelpSupportPage.jsx";
-import { AdminDashboardPlaceholder } from "./pages/admin/AdminDashboardPlaceholder.jsx";
+import { AdminDashboardPage } from "./pages/admin/AdminDashboardPage.jsx";
+import { AdminHospitalsPage } from "./pages/admin/AdminHospitalsPage.jsx";
+import { AdminUsersPage } from "./pages/admin/AdminUsersPage.jsx";
+import { AdminSupportTicketsPage } from "./pages/admin/AdminSupportTicketsPage.jsx";
 
 export default function App() {
   return (
@@ -82,7 +85,10 @@ export default function App() {
               </ProtectedRoute>
             }
           >
-            <Route index element={<AdminDashboardPlaceholder />} />
+            <Route index element={<AdminDashboardPage />} />
+            <Route path="hospitals" element={<AdminHospitalsPage />} />
+            <Route path="users" element={<AdminUsersPage />} />
+            <Route path="support-tickets" element={<AdminSupportTicketsPage />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
