@@ -15,7 +15,7 @@ const POINTS = [
   [440, 108],
 ];
 
-export function GlucoseWave({ className = "" }) {
+export function GlucoseWave({ className = "", strokeColor = "white", fillColor = "white", fillOpacity = "0.08", gridColor = "white" }) {
   return (
     <svg
       viewBox="0 0 480 220"
@@ -27,18 +27,18 @@ export function GlucoseWave({ className = "" }) {
     >
       {/* Target range band */}
       <motion.rect
-        x="0" y="80" width="480" height="70" fill="white" fillOpacity="0.08"
+        x="0" y="80" width="480" height="70" fill={fillColor} fillOpacity={fillOpacity}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.8 }}
       />
-      <line x1="0" y1="80" x2="480" y2="80" stroke="white" strokeOpacity="0.25" strokeDasharray="4 6" />
-      <line x1="0" y1="150" x2="480" y2="150" stroke="white" strokeOpacity="0.25" strokeDasharray="4 6" />
+      <line x1="0" y1="80" x2="480" y2="80" stroke={gridColor} strokeOpacity="0.25" strokeDasharray="4 6" />
+      <line x1="0" y1="150" x2="480" y2="150" stroke={gridColor} strokeOpacity="0.25" strokeDasharray="4 6" />
 
       {/* Trend line — draws itself in */}
       <motion.path
         d="M0 120 C 40 90, 70 145, 110 130 S 180 95, 220 110 S 290 150, 330 125 S 400 95, 440 108 S 470 115, 480 112"
-        stroke="white"
+        stroke={strokeColor}
         strokeWidth="3"
         strokeLinecap="round"
         initial={{ pathLength: 0 }}
@@ -50,11 +50,11 @@ export function GlucoseWave({ className = "" }) {
       {POINTS.map(([cx, cy], i) => (
         <g key={cx}>
           <circle
-            cx={cx} cy={cy} r="9" fill="white" fillOpacity="0.18"
+            cx={cx} cy={cy} r="9" fill={strokeColor} fillOpacity="0.18"
             className="origin-center animate-pulse-ring"
           />
           <motion.circle
-            cx={cx} cy={cy} r="5" fill="white"
+            cx={cx} cy={cy} r="5" fill={strokeColor}
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ delay: 0.9 + i * 0.15, duration: 0.3, ease: "backOut" }}

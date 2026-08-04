@@ -250,41 +250,40 @@ function Hero() {
             initial={{ opacity: 0, y: 24, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.7, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            className="relative"
-          >
-            <div className="rounded-card bg-ink p-8 shadow-float">
-              <div className="mb-5 flex items-center justify-between">
-                <div>
-                  <p className="font-body text-xs font-medium uppercase tracking-wide text-white/50">Glucose Trends</p>
-                  <p className="numeral mt-1 text-2xl font-semibold text-white">128 mg/dL</p>
-                </div>
-                <span className="rounded-full bg-success/20 px-2.5 py-1 font-body text-xs font-semibold text-success">
-                  78% In Range
-                </span>
-              </div>
-              <GlucoseWave className="w-full" />
-              <p className="mt-4 font-body text-sm text-white/60">
-                A simplified view of Glucose Trends — average, target range, and time-in-range,
-                tracked automatically from daily logs.
-              </p>
+        className="relative"
+      >
+        <div className="rounded-2xl border border-slate-200 bg-surface p-8 shadow-sm">
+          <div className="mb-5 flex items-center justify-between">
+            <div>
+              <p className="font-body text-xs font-bold uppercase tracking-wide text-slate-400">Glucose Trends</p>
+              <p className="numeral mt-1 text-2xl font-bold text-ink">128 mg/dL</p>
             </div>
+            <span className="rounded-full bg-green-50 px-2.5 py-1 font-body text-xs font-bold text-green-700 border border-green-200">
+              78% In Range
+            </span>
+          </div>
+          <GlucoseWave className="w-full" strokeColor="#2B6CB0" fillColor="#2B6CB0" fillOpacity="0.05" gridColor="#CBD5E1" />
+          <p className="mt-4 font-body text-xs text-muted">
+            Glucose Trends dashboard overview showing average value, healthy target range, and standard deviations tracked automatically from daily logs.
+          </p>
+        </div>
 
-            <motion.div
-              initial={{ opacity: 0, x: -16, y: 16 }}
-              animate={{ opacity: 1, x: 0, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.8, ease: [0.22, 1, 0.36, 1] }}
-              className="absolute -bottom-6 -left-6 hidden animate-float rounded-card border border-border bg-surface p-4 shadow-float sm:block"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning-light text-warning">
-                  <Flame size={18} />
-                </div>
-                <div>
-                  <p className="numeral text-lg font-semibold text-ink">7-day streak</p>
-                  <p className="font-body text-xs text-muted">Logged every category today</p>
-                </div>
-              </div>
-            </motion.div>
+        <motion.div
+          initial={{ opacity: 0, x: -16, y: 16 }}
+          animate={{ opacity: 1, x: 0, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.8, ease: [0.22, 1, 0.36, 1] }}
+          className="absolute -bottom-6 -left-6 hidden rounded-2xl border border-slate-200 bg-surface p-4 shadow-sm sm:block"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-50 text-warning border border-yellow-250">
+              <Flame size={18} />
+            </div>
+            <div>
+              <p className="numeral text-base font-bold text-ink">7-day streak</p>
+              <p className="font-body text-xs text-muted">Logged all categories today</p>
+            </div>
+          </div>
+        </motion.div>
           </motion.div>
         </div>
       </div>
@@ -328,8 +327,8 @@ function Features() {
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {FEATURES.map(({ icon: Icon, title, body }, i) => (
           <Reveal key={title} delay={i * 0.08}>
-            <div className="group h-full rounded-card border border-border bg-surface p-6 shadow-card transition-all duration-300 hover:-translate-y-1 hover:shadow-float">
-              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-primary-light text-primary transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
+            <div className="group h-full rounded-2xl border border-slate-200 bg-surface p-6 shadow-sm transition-all duration-300 hover:border-primary">
+              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-primary-light text-primary">
                 <Icon size={20} />
               </div>
               <h3 className="mb-1.5 font-display text-base font-bold text-ink">{title}</h3>
@@ -384,15 +383,7 @@ function ForHospitals() {
   return (
     <section id="hospitals" className="mx-auto max-w-6xl px-6 py-20">
       <Reveal>
-        <div className="relative overflow-hidden rounded-card bg-ink px-8 py-12 text-white lg:px-14">
-          <div
-            className="pointer-events-none absolute inset-0 opacity-[0.06]"
-            style={{
-              backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)",
-              backgroundSize: "24px 24px",
-            }}
-            aria-hidden="true"
-          />
+        <div className="relative overflow-hidden rounded-2xl bg-slate-900 border border-slate-800 px-8 py-12 text-white lg:px-14">
           <div className="relative grid items-center gap-10 lg:grid-cols-[1fr_auto]">
             <div>
               <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-white/10">

@@ -5,17 +5,14 @@
 
 export function BackgroundBlobs() {
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-      <div className="absolute -left-24 -top-24 h-96 w-96 animate-blob rounded-full bg-primary/20 blur-3xl" />
-      <div className="absolute -right-16 top-10 h-80 w-80 animate-blob-delay rounded-full bg-success/15 blur-3xl" />
-      {/* Faint dot grid for texture — very low opacity, purely tactile */}
-      <div
-        className="absolute inset-0 opacity-[0.4]"
-        style={{
-          backgroundImage: "radial-gradient(circle, #16233A12 1px, transparent 1px)",
-          backgroundSize: "28px 28px",
-        }}
-      />
+    <div className="pointer-events-none absolute inset-0 overflow-hidden bg-[#F8FAFC]" aria-hidden="true">
+      {/* Crisp vertical and horizontal dividers for clean structure */}
+      <div className="absolute left-1/4 top-0 h-full w-[1px] bg-slate-200/50" />
+      <div className="absolute left-2/4 top-0 h-full w-[1px] bg-slate-200/50" />
+      <div className="absolute left-3/4 top-0 h-full w-[1px] bg-slate-200/50" />
+      <div className="absolute top-1/4 left-0 w-full h-[1px] bg-slate-200/50" />
+      <div className="absolute top-2/4 left-0 w-full h-[1px] bg-slate-200/50" />
+      <div className="absolute top-3/4 left-0 w-full h-[1px] bg-slate-200/50" />
     </div>
   );
 }
