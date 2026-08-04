@@ -202,6 +202,23 @@ function DailyLogPlaceholder() {
     ...logs.activity.map((a) => ({ ...a, logType: "ACTIVITY" })),
   ].sort((a, b) => new Date(a.loggedAt) - new Date(b.loggedAt));
 
+  const totalEntries = timelineItems.length;
+  
+  const hasGlucose = logs.glucose.length > 0;
+  const hasInsulin = logs.insulin.length > 0;
+  const hasMeals = logs.meals.length > 0;
+  const hasActivity = logs.activity.length > 0;
+
+  const categories = [
+    { name: "Glucose Reading", status: hasGlucose },
+    { name: "Insulin Dose", status: hasInsulin },
+    { name: "Carbs / Meal", status: hasMeals },
+    { name: "Activity", status: hasActivity },
+  ];
+
+  const loggedCount = categories.filter((c) => c.status).length;
+  const progressPercent = loggedCount * 25;
+
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
       <div className="lg:col-span-2 space-y-6">
@@ -209,7 +226,12 @@ function DailyLogPlaceholder() {
           {/* Header & Date Selector */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border pb-4 mb-6 gap-3">
             <div>
-              <h3 className="font-display text-base font-bold text-ink">Today's Logs</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="font-display text-base font-bold text-ink">Today's Logs</h3>
+                <span className="text-xs font-semibold text-primary bg-primary-light px-2 py-0.5 rounded-full">
+                  {totalEntries} {totalEntries === 1 ? "entry" : "entries"}
+                </span>
+              </div>
               <p className="text-xs text-muted">View and manage logs for different days</p>
             </div>
             <div className="flex items-center gap-2">
@@ -220,6 +242,39 @@ function DailyLogPlaceholder() {
                 onChange={(e) => setSelectedDate(e.target.value)}
                 className="rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs font-semibold outline-none focus:border-primary text-ink"
               />
+            </div>
+          </div>
+
+          {/* Daily Logging Progress Bar */}
+          <div className="mb-6 rounded-xl bg-bg p-4 border border-border">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-ink">Daily Logging Progress</span>
+              <span className="text-xs font-bold text-primary">{progressPercent}% Complete</span>
+            </div>
+            
+            {/* Progress Bar Track */}
+            <div className="w-full h-2 bg-border rounded-full overflow-hidden mb-3">
+              <div 
+                className="h-full bg-primary rounded-full transition-all duration-500 ease-out"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+            
+            {/* Categories Status Badges */}
+            <div className="flex flex-wrap gap-2 mt-1.5">
+              {categories.map((c) => (
+                <span 
+                  key={c.name} 
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold transition-colors border ${
+                    c.status 
+                      ? "bg-green-50 text-green-700 border-green-200" 
+                      : "bg-surface text-muted border-border"
+                  }`}
+                >
+                  <span className={`h-1.5 w-1.5 rounded-full ${c.status ? "bg-green-500 animate-pulse" : "bg-muted"}`} />
+                  {c.name}
+                </span>
+              ))}
             </div>
           </div>
 

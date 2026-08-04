@@ -14,11 +14,41 @@ import {
   createHospitalController,
   listDoctorsController,
   assignPatientController,
+  getDashboardStatsController,
+  getRegistrationTrendController,
+  listHospitalsController,
+  getHospitalDetailController,
+  updateHospitalController,
+  listUsersController,
+  setUserActiveController,
 } from "../controllers/admin.controller.js";
+import {
+  listTicketsController,
+  getTicketStatsController,
+  updateTicketStatusController,
+} from "../controllers/support.controller.js";
 
 const router = Router();
 
 router.use(authenticate, authorize("HOSPITAL_ADMIN", "SUPER_ADMIN"), scopeToHospital);
+
+// --- Admin Dashboard ---
+router.get("/dashboard", asyncHandler(getDashboardStatsController));
+router.get("/dashboard/registration-trend", asyncHandler(getRegistrationTrendController));
+
+// --- Clinics / Hospitals ---
+router.get("/hospitals", asyncHandler(listHospitalsController));
+router.get("/hospitals/:hospitalId", asyncHandler(getHospitalDetailController));
+router.patch("/hospitals/:hospitalId", authorize("SUPER_ADMIN"), asyncHandler(updateHospitalController));
+
+// --- Users & Roles ---
+router.get("/users", asyncHandler(listUsersController));
+router.patch("/users/:userId/active", asyncHandler(setUserActiveController));
+
+// --- Support Tickets (admin view) ---
+router.get("/support-tickets", asyncHandler(listTicketsController));
+router.get("/support-tickets/stats", asyncHandler(getTicketStatsController));
+router.patch("/support-tickets/:ticketId/status", asyncHandler(updateTicketStatusController));
 
 // HOSPITAL_ADMIN-only: managing their own hospital's doctors/assignments
 router.post("/doctors", authorize("HOSPITAL_ADMIN"), asyncHandler(createDoctorController));

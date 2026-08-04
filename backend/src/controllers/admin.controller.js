@@ -60,3 +60,69 @@ export async function assignPatientController(req, res) {
   const result = await adminService.assignPatientToDoctor({ ...data, hospitalId: req.hospitalId });
   res.json({ success: true, data: result });
 }
+
+export async function getDashboardStatsController(req, res) {
+  const stats = await adminService.getDashboardStats(req.hospitalId);
+  res.json({ success: true, data: stats });
+}
+
+export async function getRegistrationTrendController(req, res) {
+  const days = req.query.days ? parseInt(req.query.days, 10) : 7;
+  const trend = await adminService.getRegistrationTrend(req.hospitalId, days);
+  res.json({ success: true, data: trend });
+}
+
+export async function listHospitalsController(req, res) {
+  const hospitals = await adminService.listHospitals(req.hospitalId);
+  res.json({ success: true, data: hospitals });
+}
+
+export async function getHospitalDetailController(req, res) {
+  const { hospitalId } = req.params;
+  const hospital = await adminService.getHospitalDetail(hospitalId);
+  res.json({ success: true, data: hospital });
+}
+
+const updateHospitalSchema = z.object({
+  name: z.string().min(1).optional(),
+  type: z.string().optional(),
+  address: z.string().optional(),
+  contactEmail: z.string().email().optional().or(z.literal("")),
+  contactPhone: z.string().optional(),
+  isActive: z.boolean().optional(),
+});
+
+export async function updateHospitalController(req, res) {
+  const { hospitalId } = req.params;
+  const data = updateHospitalSchema.parse(req.body);
+  const hospital = await adminService.updateHospital(hospitalId, data);
+  res.json({ success: true, data: hospital });
+}
+
+const listUsersQuerySchema = z.object({
+  role: z.string().optional(),
+  status: z.string().optional(),
+  search: z.string().optional(),
+  page: z.string().optional().transform(val => val ? parseInt(val, 10) : 1),
+  pageSize: z.string().optional().transform(val => val ? parseInt(val, 10) : 20),
+});
+
+export async function listUsersController(req, res) {
+  const query = listUsersQuerySchema.parse(req.query);
+  const result = await adminService.listUsers({
+    hospitalId: req.hospitalId,
+    ...query,
+  });
+  res.json({ success: true, data: result });
+}
+
+const setUserActiveSchema = z.object({
+  isActive: z.boolean(),
+});
+
+export async function setUserActiveController(req, res) {
+  const { userId } = req.params;
+  const { isActive } = setUserActiveSchema.parse(req.body);
+  const result = await adminService.setUserActive(userId, req.hospitalId, isActive);
+  res.json({ success: true, data: result });
+}
