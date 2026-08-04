@@ -104,8 +104,14 @@ export async function getInsulinSummary(patientId, days = 7) {
   // "Rapid" / "Long" bucketing is a simple substring match against
   // insulinType — matches the free-text pattern already used for
   // mealType/activityType elsewhere, not a strict enum.
-  const isRapid = (l) => (l.insulinType || "").toLowerCase().includes("rapid");
-  const isLong = (l) => (l.insulinType || "").toLowerCase().includes("long");
+  const isRapid = (l) => {
+    const t = (l.insulinType || "").toLowerCase();
+    return t.includes("rapid") || t.includes("meal");
+  };
+  const isLong = (l) => {
+    const t = (l.insulinType || "").toLowerCase();
+    return t.includes("long") || t.includes("basal");
+  };
 
   const rapidTotal = logs.filter(isRapid).reduce((sum, l) => sum + l.units, 0);
   const longTotal = logs.filter(isLong).reduce((sum, l) => sum + l.units, 0);

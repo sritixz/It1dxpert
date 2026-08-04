@@ -39,7 +39,14 @@ export function InsulinRecordsPage() {
 
   const filteredLogs = summary?.logs.filter((log) => {
     if (tab === "All") return true;
-    return (log.insulinType || "").toLowerCase().includes(tab.split(" ")[0].toLowerCase());
+    const type = (log.insulinType || "").toLowerCase();
+    if (tab === "Rapid Acting") {
+      return type.includes("rapid") || type.includes("meal");
+    }
+    if (tab === "Long Acting") {
+      return type.includes("long") || type.includes("basal");
+    }
+    return false;
   });
 
   async function handleDelete(logId) {
@@ -184,7 +191,7 @@ function StatCard({ label, value, unit, isText }) {
 function InsulinFormModal({ existing, onClose, onSaved }) {
   const [form, setForm] = useState({
     units: existing?.units || "",
-    insulinType: existing?.insulinType || "Rapid Acting",
+    insulinType: existing?.insulinType || "Lispro (Meal Time)",
     reason: existing?.reason || "",
   });
   const [isSaving, setIsSaving] = useState(false);
@@ -209,8 +216,12 @@ function InsulinFormModal({ existing, onClose, onSaved }) {
         <div>
           <label className="mb-1.5 block font-body text-sm font-medium text-ink">Type</label>
           <select value={form.insulinType} onChange={(e) => setForm({ ...form, insulinType: e.target.value })} className="w-full rounded-lg border border-border px-3.5 py-2.5 font-body text-sm">
-            <option>Rapid Acting</option>
-            <option>Long Acting</option>
+            <option value="Lispro (Meal Time)">Lispro (Meal Time)</option>
+            <option value="Basalog (Long-Acting)">Basalog (Long-Acting)</option>
+            <option value="Tresba (Long-Acting)">Tresba (Long-Acting)</option>
+            <option value="Huminsulin (Long-Acting)">Huminsulin (Long-Acting)</option>
+            <option value="Basugine (Meal Time)">Basugine (Meal Time)</option>
+            <option value="Glargine (Long-Acting)">Glargine (Long-Acting)</option>
           </select>
         </div>
         <Input label="Reason" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} placeholder="e.g. Breakfast, Basal" />

@@ -86,7 +86,7 @@ function DailyLogPlaceholder() {
   const [mealNotes, setMealNotes] = useState("");
 
   const [insulinUnits, setInsulinUnits] = useState("");
-  const [insulinType, setInsulinType] = useState("Novorapid");
+  const [insulinType, setInsulinType] = useState("Lispro (Meal Time)");
   const [insulinReason, setInsulinReason] = useState("Meal Bolus");
 
   const loadDailyLog = async (date) => {
@@ -170,7 +170,7 @@ function DailyLogPlaceholder() {
       setMealType("Breakfast");
       setMealNotes("");
       setInsulinUnits("");
-      setInsulinType("Novorapid");
+      setInsulinType("Lispro (Meal Time)");
       setInsulinReason("Meal Bolus");
       
       setSuccess("Entries saved successfully!");
@@ -411,10 +411,12 @@ function DailyLogPlaceholder() {
                   onChange={(e) => setInsulinType(e.target.value)}
                   className="w-1/2 rounded-lg border border-border bg-bg px-2 py-2.5 text-xs outline-none focus:border-primary text-ink"
                 >
-                  <option value="Novorapid">Novorapid (Rapid)</option>
-                  <option value="Lantus">Lantus (Basal)</option>
-                  <option value="Humalog">Humalog (Rapid)</option>
-                  <option value="Fiasp">Fiasp (Ultra-Rapid)</option>
+                  <option value="Lispro (Meal Time)">Lispro (Meal Time)</option>
+                  <option value="Basalog (Long-Acting)">Basalog (Long-Acting)</option>
+                  <option value="Tresba (Long-Acting)">Tresba (Long-Acting)</option>
+                  <option value="Huminsulin (Long-Acting)">Huminsulin (Long-Acting)</option>
+                  <option value="Basugine (Meal Time)">Basugine (Meal Time)</option>
+                  <option value="Glargine (Long-Acting)">Glargine (Long-Acting)</option>
                 </select>
               </div>
               <select
@@ -533,8 +535,8 @@ function MedicationsPlaceholder() {
 
       <div className="mt-6 space-y-4">
         {[
-          { name: "Novorapid (Aspart)", type: "Rapid-acting", dose: "Sliding Scale (approx 4-6 U)", schedule: "Before Meals (Breakfast, Lunch, Dinner)" },
-          { name: "Lantus (Glargine)", type: "Long-acting", dose: "14 Units", schedule: "Bedtime (09:30 PM)" },
+          { name: "Lispro (Meal Time)", type: "Meal Time", dose: "Sliding Scale (approx 4-6 U)", schedule: "Before Meals (Breakfast, Lunch, Dinner)" },
+          { name: "Glargine (Long-Acting)", type: "Long-acting", dose: "14 Units", schedule: "Bedtime (09:30 PM)" },
         ].map((med, index) => (
           <div key={index} className="flex flex-col sm:flex-row sm:items-center justify-between border border-border p-4 rounded-xl hover:border-primary-light transition-colors">
             <div className="flex items-start gap-3">
