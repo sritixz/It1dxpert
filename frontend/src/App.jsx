@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import { ProtectedRoute } from "./components/ProtectedRoute.jsx";
 import { AppShell } from "./components/layout/AppShell.jsx";
+import { PlaceholderPage } from "./pages/PlaceholderPage.jsx";
 
 import { LandingPage } from "./pages/marketing/LandingPage.jsx";
 import { LoginPage } from "./pages/auth/LoginPage.jsx";
@@ -46,9 +47,13 @@ export default function App() {
             }
           >
             <Route index element={<PatientDashboardPlaceholder />} />
+            <Route path="daily-log" element={<PlaceholderPage />} />
+            <Route path="glucose-trends" element={<PlaceholderPage />} />
             <Route path="insulin-records" element={<InsulinRecordsPage />} />
             <Route path="activity" element={<ActivityPage />} />
+            <Route path="medications" element={<PlaceholderPage />} />
             <Route path="appointments" element={<PatientAppointmentsPage />} />
+            <Route path="badges" element={<PlaceholderPage />} />
             <Route path="settings" element={<PatientSettingsPage />} />
             {/* Daily Log / Glucose Trends / Medications / Badges — backend
                 endpoints already exist and work, but the frontend screens
@@ -87,8 +92,11 @@ export default function App() {
           >
             <Route index element={<AdminDashboardPage />} />
             <Route path="hospitals" element={<AdminHospitalsPage />} />
+            <Route path="doctors" element={<PlaceholderPage />} />
+            <Route path="patients" element={<PlaceholderPage />} />
             <Route path="users" element={<AdminUsersPage />} />
             <Route path="support-tickets" element={<AdminSupportTicketsPage />} />
+            <Route path="settings" element={<PlaceholderPage />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />

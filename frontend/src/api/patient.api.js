@@ -64,6 +64,22 @@ export async function requestAppointment(payload) {
   return data.data;
 }
 
+// --- Daily Log ---
+export async function fetchDailyLog(date) {
+  const { data } = await apiClient.get("/patient/daily-log", { params: { date } });
+  return data.data;
+}
+
+export async function logGlucose(payload) {
+  const { data } = await apiClient.post("/patient/logs/glucose", payload);
+  return data.data;
+}
+
+export async function logMeal(payload) {
+  const { data } = await apiClient.post("/patient/logs/meal", payload);
+  return data.data;
+}
+
 // --- Settings ---
 export async function fetchPatientSettings() {
   const { data } = await apiClient.get("/patient/settings");
