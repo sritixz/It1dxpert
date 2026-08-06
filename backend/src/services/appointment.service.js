@@ -156,3 +156,110 @@ export async function updateAppointmentStatus(appointmentId, hospitalId, status)
   if (!appointment) throw new AppError("Appointment not found", 404);
   return prisma.appointment.update({ where: { id: appointmentId }, data: { status } });
 }
+
+export async function getAppointmentRecord({ appointmentId, hospitalId, doctorProfileId, patientProfileId }) {
+  const appointment = await prisma.appointment.findFirst({
+    where: {
+      id: appointmentId,
+      hospitalId,
+      ...(doctorProfileId ? { doctorId: doctorProfileId } : {}),
+      ...(patientProfileId ? { patientId: patientProfileId } : {}),
+    },
+    include: {
+      patient: {
+        select: {
+          fullName: true,
+          dateOfBirth: true,
+          gender: true,
+          diabetesType: true,
+        }
+      },
+      doctor: {
+        select: {
+          fullName: true,
+          specialization: true,
+        }
+      }
+    }
+  });
+
+  if (!appointment) throw new AppError("Appointment not found", 404);
+
+  const record = await prisma.appointmentRecord.findUnique({
+    where: { appointmentId }
+  });
+
+  // Find the previous COMPLETED appointment with a record for this patient before the current appointment date
+  const previousAppointment = await prisma.appointment.findFirst({
+    where: {
+      patientId: appointment.patientId,
+      status: "COMPLETED",
+      id: { not: appointmentId },
+      scheduledAt: { lt: appointment.scheduledAt },
+      appointmentRecord: { isNot: null }
+    },
+    orderBy: { scheduledAt: "desc" },
+    include: { appointmentRecord: true }
+  });
+
+  const previousRecord = previousAppointment?.appointmentRecord || null;
+
+  const differences = {};
+  const fields = ["weight", "height", "systolicBP", "diastolicBP", "pulse", "temperature", "bloodGlucose"];
+  
+  fields.forEach((field) => {
+    if (record && record[field] !== null && previousRecord && previousRecord[field] !== null) {
+      differences[field] = Number((record[field] - previousRecord[field]).toFixed(2));
+    } else {
+      differences[field] = null;
+    }
+  });
+
+  return {
+    appointment,
+    record,
+    previousRecord,
+    differences
+  };
+}
+
+export async function upsertAppointmentRecord({ appointmentId, hospitalId, doctorProfileId, data }) {
+  const appointment = await prisma.appointment.findFirst({
+    where: {
+      id: appointmentId,
+      hospitalId,
+      ...(doctorProfileId ? { doctorId: doctorProfileId } : {})
+    }
+  });
+
+  if (!appointment) throw new AppError("Appointment not found", 404);
+
+  const recordData = {
+    weight: data.weight !== undefined && data.weight !== "" && data.weight !== null ? parseFloat(data.weight) : null,
+    height: data.height !== undefined && data.height !== "" && data.height !== null ? parseFloat(data.height) : null,
+    systolicBP: data.systolicBP !== undefined && data.systolicBP !== "" && data.systolicBP !== null ? parseInt(data.systolicBP, 10) : null,
+    diastolicBP: data.diastolicBP !== undefined && data.diastolicBP !== "" && data.diastolicBP !== null ? parseInt(data.diastolicBP, 10) : null,
+    pulse: data.pulse !== undefined && data.pulse !== "" && data.pulse !== null ? parseInt(data.pulse, 10) : null,
+    temperature: data.temperature !== undefined && data.temperature !== "" && data.temperature !== null ? parseFloat(data.temperature) : null,
+    bloodGlucose: data.bloodGlucose !== undefined && data.bloodGlucose !== "" && data.bloodGlucose !== null ? parseFloat(data.bloodGlucose) : null,
+    notes: data.notes || null,
+    prescription: data.prescription || null,
+  };
+
+  const record = await prisma.appointmentRecord.upsert({
+    where: { appointmentId },
+    update: recordData,
+    create: {
+      appointmentId,
+      patientId: appointment.patientId,
+      ...recordData
+    }
+  });
+
+  await prisma.appointment.update({
+    where: { id: appointmentId },
+    data: { status: "COMPLETED" }
+  });
+
+  return record;
+}

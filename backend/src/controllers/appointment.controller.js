@@ -68,3 +68,37 @@ export async function updateAppointmentStatusController(req, res) {
   const appointment = await appointmentService.updateAppointmentStatus(req.params.appointmentId, req.hospitalId, status);
   res.json({ success: true, data: appointment });
 }
+
+const recordSchema = z.object({
+  weight: z.union([z.number(), z.string(), z.null()]).optional(),
+  height: z.union([z.number(), z.string(), z.null()]).optional(),
+  systolicBP: z.union([z.number(), z.string(), z.null()]).optional(),
+  diastolicBP: z.union([z.number(), z.string(), z.null()]).optional(),
+  pulse: z.union([z.number(), z.string(), z.null()]).optional(),
+  temperature: z.union([z.number(), z.string(), z.null()]).optional(),
+  bloodGlucose: z.union([z.number(), z.string(), z.null()]).optional(),
+  notes: z.string().nullable().optional(),
+  prescription: z.string().nullable().optional(),
+});
+
+export async function getAppointmentRecordController(req, res) {
+  const { appointmentId } = req.params;
+  const result = await appointmentService.getAppointmentRecord({
+    appointmentId,
+    hospitalId: req.hospitalId,
+    doctorProfileId: req.doctorProfileId,
+  });
+  res.json({ success: true, data: result });
+}
+
+export async function upsertAppointmentRecordController(req, res) {
+  const { appointmentId } = req.params;
+  const data = recordSchema.parse(req.body);
+  const record = await appointmentService.upsertAppointmentRecord({
+    appointmentId,
+    hospitalId: req.hospitalId,
+    doctorProfileId: req.doctorProfileId,
+    data,
+  });
+  res.json({ success: true, data: record });
+}

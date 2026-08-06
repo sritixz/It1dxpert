@@ -34,6 +34,11 @@ export async function fetchPatientTimeline(patientId, limit = 20) {
   return data.data;
 }
 
+export async function fetchPatientAppointmentRecords(patientId) {
+  const { data } = await apiClient.get(`/doctor/patients/${patientId}/appointment-records`);
+  return data.data;
+}
+
 // --- Alerts ---
 // type is one of HIGH_GLUCOSE | LOW_GLUCOSE | MISSED_LOG, or undefined for "All".
 // Response shape: { alerts, summary: { total, highGlucose, lowGlucose, missedLogs } }
@@ -75,6 +80,16 @@ export async function createAppointment(payload) {
 
 export async function updateAppointmentStatus(appointmentId, status) {
   const { data } = await apiClient.patch(`/doctor/appointments/${appointmentId}/status`, { status });
+  return data.data;
+}
+
+export async function fetchAppointmentRecord(appointmentId) {
+  const { data } = await apiClient.get(`/doctor/appointments/${appointmentId}/record`);
+  return data.data;
+}
+
+export async function saveAppointmentRecord(appointmentId, payload) {
+  const { data } = await apiClient.post(`/doctor/appointments/${appointmentId}/record`, payload);
   return data.data;
 }
 

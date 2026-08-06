@@ -58,3 +58,13 @@ export async function getCalendarSummaryController(req, res) {
   });
   res.json({ success: true, data: summary });
 }
+
+export async function getPatientAppointmentRecordController(req, res) {
+  const { appointmentId } = req.params;
+  const result = await appointmentService.getAppointmentRecord({
+    appointmentId,
+    hospitalId: req.hospitalId,
+    patientProfileId: req.patientProfileId,
+  });
+  res.json({ success: true, data: result });
+}

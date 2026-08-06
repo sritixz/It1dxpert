@@ -55,7 +55,7 @@ export async function registerPatient({ email, password, fullName, hospitalId, d
     return createdUser;
   });
 
-  return issueTokens(user);
+  return await issueTokens(user);
 }
 
 export async function login({ email, password }) {
@@ -79,7 +79,7 @@ export async function login({ email, password }) {
   // whether login succeeds, so a failure here shouldn't fail the login.
   await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } }).catch(() => {});
 
-  return issueTokens(user);
+  return await issueTokens(user);
 }
 
 /**
@@ -101,8 +101,25 @@ export async function changePassword(userId, { currentPassword, newPassword }) {
   await prisma.user.update({ where: { id: userId }, data: { passwordHash } });
 }
 
-function issueTokens(user) {
+async function issueTokens(user) {
   const claims = { userId: user.id, role: user.role, hospitalId: user.hospitalId };
+
+  const profileDetails = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: {
+      patientProfile: {
+        include: {
+          assignedDoctor: { select: { fullName: true, specialization: true } },
+          hospital: { select: { name: true } },
+        }
+      },
+      doctorProfile: {
+        include: {
+          hospital: { select: { name: true } },
+        }
+      },
+    }
+  });
 
   return {
     accessToken: signAccessToken(claims),
@@ -112,6 +129,8 @@ function issueTokens(user) {
       email: user.email,
       role: user.role,
       hospitalId: user.hospitalId,
+      patientProfile: profileDetails?.patientProfile || null,
+      doctorProfile: profileDetails?.doctorProfile || null,
     },
   };
 }

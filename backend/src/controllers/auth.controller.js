@@ -64,8 +64,6 @@ export async function refreshController(req, res) {
   res.status(200).json({ success: true, data: { accessToken } });
 }
 
-// Simple "who am I" endpoint — useful for the frontend to hydrate auth
-// state on page load without re-decoding the JWT client-side.
 export async function meController(req, res) {
   const user = await prisma.user.findUnique({
     where: { id: req.auth.userId },
@@ -74,8 +72,30 @@ export async function meController(req, res) {
       email: true,
       role: true,
       hospitalId: true,
-      patientProfile: true,
-      doctorProfile: true,
+      patientProfile: {
+        include: {
+          assignedDoctor: {
+            select: {
+              fullName: true,
+              specialization: true,
+            }
+          },
+          hospital: {
+            select: {
+              name: true,
+            }
+          }
+        }
+      },
+      doctorProfile: {
+        include: {
+          hospital: {
+            select: {
+              name: true,
+            }
+          }
+        }
+      },
     },
   });
 

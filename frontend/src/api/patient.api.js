@@ -64,6 +64,11 @@ export async function requestAppointment(payload) {
   return data.data;
 }
 
+export async function fetchMyAppointmentRecord(appointmentId) {
+  const { data } = await apiClient.get(`/patient/appointments/${appointmentId}/record`);
+  return data.data;
+}
+
 // --- Daily Log ---
 export async function fetchDailyLog(date) {
   const { data } = await apiClient.get("/patient/daily-log", { params: { date } });
@@ -106,9 +111,16 @@ export async function changePassword(payload) {
   return data.data;
 }
 
+// --- Gamification ---
+export async function fetchGamificationStatus() {
+  const { data } = await apiClient.get("/patient/gamification");
+  return data.data;
+}
+
 // CSV export — returns a Blob rather than JSON, so the caller can trigger
 // a browser download directly.
 export async function exportPatientData() {
   const response = await apiClient.get("/patient/settings/export", { responseType: "blob" });
   return response.data;
 }
+

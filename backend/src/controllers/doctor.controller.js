@@ -67,3 +67,11 @@ export async function resolveAlertController(req, res) {
   const alert = await doctorService.resolveAlert(req.params.alertId, req.hospitalId);
   res.json({ success: true, data: alert });
 }
+
+export async function getPatientAppointmentRecordsController(req, res) {
+  const result = await doctorService.getPatientAppointmentRecords(req.params.patientId, {
+    hospitalId: req.hospitalId,
+    doctorProfileId: req.doctorProfileId,
+  });
+  res.json({ success: true, data: result });
+}

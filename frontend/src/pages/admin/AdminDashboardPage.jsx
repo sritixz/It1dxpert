@@ -13,10 +13,12 @@ import {
 import { Card } from "../../components/ui/Card.jsx";
 import { fetchDashboardStats, fetchRegistrationTrend } from "../../api/admin.api.js";
 import { formatRelativeTime } from "../../utils/format.js";
+import { useAuth } from "../../context/AuthContext.jsx";
 
 const ROLE_COLORS = { patients: "#2B6CB0", doctors: "#2F9E6E", hospitalAdmins: "#C2831F" };
 
 export function AdminDashboardPage() {
+  const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const [trend, setTrend] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,6 +43,29 @@ export function AdminDashboardPage() {
 
   return (
     <div className="flex flex-col gap-5">
+      {/* Admin Greeting & Scoping Metadata */}
+      <Card className="relative overflow-hidden border-border/80">
+        <p className="font-display text-xl font-bold text-ink">
+          Administrator Control Panel
+        </p>
+        <p className="mt-1 font-body text-sm text-muted">
+          Accessing central system logs, hospital profiles, staff accounts, and ticket routing.
+        </p>
+        <div className="flex flex-wrap gap-2 mt-4 font-body text-xs text-muted">
+          <span className="px-2.5 py-1 rounded-lg bg-bg border border-border/80 shadow-xs">
+            Administrator: <strong className="text-ink">{user?.email}</strong>
+          </span>
+          <span className="px-2.5 py-1 rounded-lg bg-bg border border-border/80 shadow-xs">
+            System Role: <strong className="text-ink capitalize">{user?.role?.replace("_", " ").toLowerCase()}</strong>
+          </span>
+          {user?.hospitalId && (
+            <span className="px-2.5 py-1 rounded-lg bg-bg border border-border/80 shadow-xs">
+              Hospital Tenant ID: <strong className="text-ink uppercase">{user.hospitalId.slice(0, 8)}...</strong>
+            </span>
+          )}
+        </div>
+      </Card>
+
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <StatCard icon={Users} label="Total Patients" value={stats.totalPatients} />
         <StatCard icon={Stethoscope} label="Total Doctors" value={stats.totalDoctors} />

@@ -264,3 +264,20 @@ export async function resolveAlert(alertId, hospitalId) {
   if (!alert) throw new AppError("Alert not found", 404);
   return prisma.alert.update({ where: { id: alertId }, data: { isResolved: true, isRead: true } });
 }
+
+export async function getPatientAppointmentRecords(patientId, { hospitalId, doctorProfileId }) {
+  await assertDoctorCanAccessPatient(patientId, { hospitalId, doctorProfileId });
+
+  return prisma.appointment.findMany({
+    where: {
+      patientId,
+      status: "COMPLETED",
+      appointmentRecord: { isNot: null }
+    },
+    include: {
+      appointmentRecord: true,
+      doctor: { select: { fullName: true } }
+    },
+    orderBy: { scheduledAt: "desc" }
+  });
+}

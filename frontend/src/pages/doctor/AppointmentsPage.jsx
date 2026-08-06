@@ -4,7 +4,7 @@
 // need one — one fewer dependency for something this contained.
 
 import { useEffect, useState } from "react";
-import { Plus, Video, MapPin } from "lucide-react";
+import { Plus, Video, MapPin, TrendingUp, TrendingDown, Activity, FileText, X } from "lucide-react";
 import { Card } from "../../components/ui/Card.jsx";
 import { Button } from "../../components/ui/Button.jsx";
 import { Modal } from "../../components/ui/Modal.jsx";
@@ -12,6 +12,7 @@ import { Input } from "../../components/ui/Input.jsx";
 import {
   fetchAppointments, fetchAppointmentStats, fetchCalendarSummary,
   createAppointment, updateAppointmentStatus, fetchPatients,
+  fetchAppointmentRecord, saveAppointmentRecord,
 } from "../../api/doctor.api.js";
 import { formatTime } from "../../utils/format.js";
 
@@ -43,6 +44,7 @@ export function AppointmentsPage() {
   const [stats, setStats] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [selectedAptForRecord, setSelectedAptForRecord] = useState(null);
 
   function load() {
     setIsLoading(true);
@@ -104,22 +106,31 @@ export function AppointmentsPage() {
                       <p className="font-body text-sm font-semibold text-ink">{apt.patient.fullName}</p>
                       <p className="font-body text-xs text-muted">{apt.type} — {apt.purpose || "No purpose specified"}</p>
                     </div>
-                    <span className="flex items-center gap-1 font-body text-xs text-muted">
+                    <span className="flex items-center gap-1 font-body text-xs text-muted shrink-0">
                       {apt.mode === "VIDEO_CALL" ? <Video size={12} /> : <MapPin size={12} />}
                       {apt.mode === "VIDEO_CALL" ? "Video Call" : "In Clinic"}
                     </span>
-                    <select
-                      value={apt.status}
-                      onChange={async (e) => {
-                        await updateAppointmentStatus(apt.id, e.target.value);
-                        load();
-                      }}
-                      className={`rounded-full border-0 px-2.5 py-1 font-body text-xs font-semibold ${STATUS_STYLES[apt.status]}`}
-                    >
-                      {Object.keys(STATUS_STYLES).map((s) => (
-                        <option key={s} value={s}>{s.charAt(0) + s.slice(1).toLowerCase()}</option>
-                      ))}
-                    </select>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setSelectedAptForRecord(apt.id)}
+                        className="rounded-lg border border-border px-2.5 py-1 font-body text-xs font-semibold hover:border-primary hover:text-primary transition-colors flex items-center gap-1 bg-surface text-muted"
+                        title="Vitals & Clinical Record"
+                      >
+                        <Activity size={12} /> Vitals & Record
+                      </button>
+                      <select
+                        value={apt.status}
+                        onChange={async (e) => {
+                          await updateAppointmentStatus(apt.id, e.target.value);
+                          load();
+                        }}
+                        className={`rounded-full border-0 px-2.5 py-1 font-body text-xs font-semibold ${STATUS_STYLES[apt.status]}`}
+                      >
+                        {Object.keys(STATUS_STYLES).map((s) => (
+                          <option key={s} value={s}>{s.charAt(0) + s.slice(1).toLowerCase()}</option>
+                        ))}
+                      </select>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -135,6 +146,16 @@ export function AppointmentsPage() {
           onClose={() => setShowModal(false)}
           onCreated={() => {
             setShowModal(false);
+            load();
+          }}
+        />
+      )}
+
+      {selectedAptForRecord && (
+        <ClinicalRecordModal
+          appointmentId={selectedAptForRecord}
+          onClose={() => {
+            setSelectedAptForRecord(null);
             load();
           }}
         />
@@ -272,5 +293,274 @@ function NewAppointmentModal({ onClose, onCreated }) {
         <Button type="submit" isLoading={isSaving} className="mt-2 w-full">Create Appointment</Button>
       </form>
     </Modal>
+  );
+}
+
+export function ClinicalRecordModal({ appointmentId, onClose }) {
+  const [data, setData] = useState(null);
+  const [form, setForm] = useState({
+    weight: "", height: "", systolicBP: "", diastolicBP: "",
+    pulse: "", temperature: "", bloodGlucose: "", notes: "", prescription: "",
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    setIsLoading(true);
+    fetchAppointmentRecord(appointmentId)
+      .then((res) => {
+        setData(res);
+        if (res.record) {
+          setForm({
+            weight: res.record.weight ?? "",
+            height: res.record.height ?? "",
+            systolicBP: res.record.systolicBP ?? "",
+            diastolicBP: res.record.diastolicBP ?? "",
+            pulse: res.record.pulse ?? "",
+            temperature: res.record.temperature ?? "",
+            bloodGlucose: res.record.bloodGlucose ?? "",
+            notes: res.record.notes ?? "",
+            prescription: res.record.prescription ?? "",
+          });
+        }
+      })
+      .catch((err) => {
+        setError(err.response?.data?.message || "Couldn't load clinical record.");
+      })
+      .finally(() => setIsLoading(false));
+  }, [appointmentId]);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setIsSaving(true);
+    setError("");
+    setSuccess(false);
+    try {
+      await saveAppointmentRecord(appointmentId, form);
+      setSuccess(true);
+      setTimeout(() => {
+        onClose();
+      }, 1000);
+    } catch (err) {
+      setError(err.response?.data?.message || "Couldn't save clinical record.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  function handleInputChange(field, val) {
+    setForm((prev) => ({ ...prev, [field]: val }));
+  }
+
+  function renderFieldDiff(field, currentVal, unit) {
+    if (!data?.previousRecord) return null;
+    const prevVal = data.previousRecord[field];
+    if (prevVal === null || prevVal === undefined) return null;
+
+    const parsedCurrent = parseFloat(currentVal);
+    if (isNaN(parsedCurrent)) {
+      return (
+        <span className="text-[10px] font-body text-muted mt-0.5 block">
+          Previous: {prevVal} {unit}
+        </span>
+      );
+    }
+
+    const diff = Number((parsedCurrent - prevVal).toFixed(2));
+    if (diff === 0) {
+      return (
+        <span className="text-[10px] font-body text-muted mt-0.5 block flex items-center gap-0.5">
+          Previous: {prevVal} {unit} (No change)
+        </span>
+      );
+    }
+
+    const isPositiveBad = ["weight", "bloodglucose", "systolicbp", "diastolicbp", "pulse", "temperature"].includes(field.toLowerCase());
+    const isIncrease = diff > 0;
+    let colorClass = "text-muted";
+    if (isIncrease) {
+      colorClass = isPositiveBad ? "text-critical" : "text-success";
+    } else {
+      colorClass = isPositiveBad ? "text-success" : "text-critical";
+    }
+
+    return (
+      <span className={`text-[10px] font-body font-medium mt-0.5 block flex items-center gap-0.5 ${colorClass}`}>
+        Previous: {prevVal} {unit} ({isIncrease ? "+" : ""}{diff} {unit})
+        {isIncrease ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+      </span>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-2xl rounded-card bg-surface p-6 shadow-float max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-center justify-between border-b border-border pb-3">
+          <div>
+            <h3 className="font-display text-base font-bold text-ink">
+              Clinical Record & Vitals
+            </h3>
+            {data?.appointment && (
+              <p className="font-body text-xs text-muted mt-0.5">
+                Patient: <span className="font-semibold text-ink">{data.appointment.patient.fullName}</span> | Date: {new Date(data.appointment.scheduledAt).toLocaleDateString()}
+              </p>
+            )}
+          </div>
+          <button onClick={onClose} className="text-muted hover:text-ink transition-colors" aria-label="Close">
+            <X size={18} />
+          </button>
+        </div>
+
+        {isLoading ? (
+          <p className="py-10 text-center font-body text-sm text-muted">Loading clinical record data…</p>
+        ) : (
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            {error && (
+              <div className="rounded-lg bg-critical-light p-3 border border-critical/20">
+                <p className="font-body text-xs text-critical font-medium">{error}</p>
+              </div>
+            )}
+
+            {success && (
+              <div className="rounded-lg bg-success-light p-3 border border-success/20">
+                <p className="font-body text-xs text-success font-medium">Clinical record saved successfully! Closing...</p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* Left Column: Vitals Form */}
+              <div className="flex flex-col gap-3">
+                <p className="font-display text-xs font-bold text-ink uppercase tracking-wider border-b border-border pb-1">Vitals & Measurements</p>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Input
+                      label="Weight (kg)"
+                      type="number"
+                      step="0.01"
+                      value={form.weight}
+                      onChange={(e) => handleInputChange("weight", e.target.value)}
+                      placeholder="e.g. 70.5"
+                    />
+                    {renderFieldDiff("weight", form.weight, "kg")}
+                  </div>
+                  <div>
+                    <Input
+                      label="Height (cm)"
+                      type="number"
+                      step="0.1"
+                      value={form.height}
+                      onChange={(e) => handleInputChange("height", e.target.value)}
+                      placeholder="e.g. 175"
+                    />
+                    {renderFieldDiff("height", form.height, "cm")}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Input
+                      label="Systolic BP (mmHg)"
+                      type="number"
+                      value={form.systolicBP}
+                      onChange={(e) => handleInputChange("systolicBP", e.target.value)}
+                      placeholder="e.g. 120"
+                    />
+                    {renderFieldDiff("systolicBP", form.systolicBP, "mmHg")}
+                  </div>
+                  <div>
+                    <Input
+                      label="Diastolic BP (mmHg)"
+                      type="number"
+                      value={form.diastolicBP}
+                      onChange={(e) => handleInputChange("diastolicBP", e.target.value)}
+                      placeholder="e.g. 80"
+                    />
+                    {renderFieldDiff("diastolicBP", form.diastolicBP, "mmHg")}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Input
+                      label="Pulse (bpm)"
+                      type="number"
+                      value={form.pulse}
+                      onChange={(e) => handleInputChange("pulse", e.target.value)}
+                      placeholder="e.g. 72"
+                    />
+                    {renderFieldDiff("pulse", form.pulse, "bpm")}
+                  </div>
+                  <div>
+                    <Input
+                      label="Temperature (°C)"
+                      type="number"
+                      step="0.1"
+                      value={form.temperature}
+                      onChange={(e) => handleInputChange("temperature", e.target.value)}
+                      placeholder="e.g. 36.6"
+                    />
+                    {renderFieldDiff("temperature", form.temperature, "°C")}
+                  </div>
+                </div>
+
+                <div>
+                  <Input
+                    label="Blood Glucose (mg/dL)"
+                    type="number"
+                    step="0.1"
+                    value={form.bloodGlucose}
+                    onChange={(e) => handleInputChange("bloodGlucose", e.target.value)}
+                    placeholder="e.g. 110"
+                  />
+                  {renderFieldDiff("bloodGlucose", form.bloodGlucose, "mg/dL")}
+                </div>
+              </div>
+
+              {/* Right Column: Text Observations */}
+              <div className="flex flex-col gap-3">
+                <p className="font-display text-xs font-bold text-ink uppercase tracking-wider border-b border-border pb-1">Clinical Notes & Recommendations</p>
+                
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-body text-sm font-medium text-ink">Clinical Notes & Observations</label>
+                  <textarea
+                    rows={4}
+                    value={form.notes}
+                    onChange={(e) => handleInputChange("notes", e.target.value)}
+                    placeholder="Describe symptoms, patient comments, details of physical checkup..."
+                    className="w-full rounded-lg border border-border px-3.5 py-2.5 font-body text-sm text-ink placeholder:text-muted/60 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors resize-none"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-body text-sm font-medium text-ink">Prescriptions & Next Steps</label>
+                  <textarea
+                    rows={4}
+                    value={form.prescription}
+                    onChange={(e) => handleInputChange("prescription", e.target.value)}
+                    placeholder="Medications prescribed, insulin doses adjust, tests ordered, next follow-up instructions..."
+                    className="w-full rounded-lg border border-border px-3.5 py-2.5 font-body text-sm text-ink placeholder:text-muted/60 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors resize-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 flex items-center justify-end gap-2 border-t border-border pt-4">
+              <Button type="button" variant="secondary" onClick={onClose} disabled={isSaving}>
+                Cancel
+              </Button>
+              <Button type="submit" isLoading={isSaving}>
+                Save & Mark Completed
+              </Button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
   );
 }

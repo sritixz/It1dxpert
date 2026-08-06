@@ -268,22 +268,6 @@ function Hero() {
           </p>
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, x: -16, y: 16 }}
-          animate={{ opacity: 1, x: 0, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.8, ease: [0.22, 1, 0.36, 1] }}
-          className="absolute -bottom-6 -left-6 hidden rounded-2xl border border-slate-200 bg-surface p-4 shadow-sm sm:block"
-        >
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-50 text-warning border border-yellow-250">
-              <Flame size={18} />
-            </div>
-            <div>
-              <p className="numeral text-base font-bold text-ink">7-day streak</p>
-              <p className="font-body text-xs text-muted">Logged all categories today</p>
-            </div>
-          </div>
-        </motion.div>
           </motion.div>
         </div>
       </div>

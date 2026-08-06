@@ -10,6 +10,8 @@ import {
   getAppointmentStatsController,
   getCalendarSummaryController,
   updateAppointmentStatusController,
+  getAppointmentRecordController,
+  upsertAppointmentRecordController,
 } from "../controllers/appointment.controller.js";
 
 const router = Router();
@@ -21,5 +23,7 @@ router.get("/", asyncHandler(listAppointmentsController));
 router.get("/stats", asyncHandler(getAppointmentStatsController));
 router.get("/calendar", asyncHandler(getCalendarSummaryController));
 router.patch("/:appointmentId/status", asyncHandler(updateAppointmentStatusController));
+router.get("/:appointmentId/record", asyncHandler(getAppointmentRecordController));
+router.post("/:appointmentId/record", asyncHandler(upsertAppointmentRecordController));
 
 export default router;

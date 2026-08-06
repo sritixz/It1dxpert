@@ -165,6 +165,7 @@ model PatientProfile {
   appointments  Appointment[]
   streakRecord  StreakRecord?
   patientBadges PatientBadge[]
+  appointmentRecords AppointmentRecord[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -435,9 +436,36 @@ model Appointment {
   notes       String?
   createdAt   DateTime          @default(now())
 
+  appointmentRecord AppointmentRecord?
+
   @@index([patientId, scheduledAt])
   @@index([doctorId, scheduledAt])
   @@map("appointments")
+}
+
+model AppointmentRecord {
+  id            String         @id @default(uuid())
+  appointmentId String         @unique
+  appointment   Appointment    @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  patientId     String
+  patient       PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  weight        Float?         // kg
+  height        Float?         // cm
+  systolicBP    Int?           // mmHg
+  diastolicBP   Int?           // mmHg
+  pulse         Int?           // bpm
+  temperature   Float?         // Celsius
+  bloodGlucose  Float?         // mg/dL
+  notes         String?        // Clinical notes / observations
+  prescription  String?        // Recommendations / Prescription details
+  
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([patientId])
+  @@map("appointment_records")
 }
 
 // -----------------------------------------------------------------------------

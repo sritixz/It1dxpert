@@ -9,6 +9,7 @@ import {
   listAppointmentsController,
   getAppointmentStatsController,
   getCalendarSummaryController,
+  getPatientAppointmentRecordController,
 } from "../controllers/patientAppointment.controller.js";
 
 const router = Router();
@@ -19,5 +20,6 @@ router.post("/", asyncHandler(createAppointmentController));
 router.get("/", asyncHandler(listAppointmentsController));
 router.get("/stats", asyncHandler(getAppointmentStatsController));
 router.get("/calendar", asyncHandler(getCalendarSummaryController));
+router.get("/:appointmentId/record", asyncHandler(getPatientAppointmentRecordController));
 
 export default router;

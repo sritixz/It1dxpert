@@ -14,7 +14,8 @@ import {
   Tooltip, ReferenceArea, ReferenceLine,
 } from "recharts";
 import { Card } from "../../components/ui/Card.jsx";
-import { fetchPatientOverview, fetchPatientGlucoseTrends, fetchPatientTimeline } from "../../api/doctor.api.js";
+import { fetchPatientOverview, fetchPatientGlucoseTrends, fetchPatientTimeline, fetchPatientAppointmentRecords } from "../../api/doctor.api.js";
+import { ClinicalRecordModal } from "./AppointmentsPage.jsx";
 import { formatTime, formatRelativeTime } from "../../utils/format.js";
 
 const RANGE_OPTIONS = [
@@ -41,9 +42,17 @@ export function GlucoseMonitorPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const [apptRecords, setApptRecords] = useState([]);
+  const [selectedAptId, setSelectedAptId] = useState(null);
+
+  function loadRecords() {
+    fetchPatientAppointmentRecords(patientId).then(setApptRecords).catch(() => {});
+  }
+
   // Patient name/header info only needs fetching once, not on range change.
   useEffect(() => {
     fetchPatientOverview(patientId).catch(() => {}).then((data) => data && setOverview(data));
+    loadRecords();
   }, [patientId]);
 
   useEffect(() => {
