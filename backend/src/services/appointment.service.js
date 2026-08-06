@@ -62,6 +62,8 @@ export async function listAppointments({ hospitalId, doctorProfileId, patientPro
     where.scheduledAt = { gte: start, lt: end };
   } else if (when === "upcoming") {
     where.scheduledAt = { gte: new Date() };
+  } else if (when === "past") {
+    where.scheduledAt = { lt: new Date() };
   }
 
   return prisma.appointment.findMany({

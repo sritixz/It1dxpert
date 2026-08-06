@@ -190,6 +190,73 @@ export function GlucoseMonitorPage() {
               </ul>
             )}
           </Card>
+
+          {/* Vitals & Clinical Record History */}
+          <Card>
+            <p className="mb-4 font-display text-sm font-bold text-ink">Clinical Vitals & Appointment History</p>
+            {apptRecords.length === 0 ? (
+              <p className="font-body text-sm text-muted">No clinical records stored yet for this patient.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left font-body text-xs text-ink">
+                  <thead className="border-b border-border bg-bg/40">
+                    <tr>
+                      {["Date", "Weight", "BP", "Glucose", "Doctor", "Notes", ""].map((h) => (
+                        <th key={h} className="px-3 py-2 font-semibold uppercase tracking-wider text-muted">
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {apptRecords.map((apt) => {
+                      const rec = apt.appointmentRecord;
+                      return (
+                        <tr key={apt.id} className="border-b border-border last:border-0 hover:bg-bg/20">
+                          <td className="px-3 py-3 font-semibold">
+                            {new Date(apt.scheduledAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                          </td>
+                          <td className="px-3 py-3 text-muted">
+                            {rec?.weight ? `${rec.weight} kg` : "—"}
+                          </td>
+                          <td className="px-3 py-3 text-muted">
+                            {rec?.systolicBP && rec?.diastolicBP ? `${rec.systolicBP}/${rec.diastolicBP}` : "—"}
+                          </td>
+                          <td className="px-3 py-3 text-muted">
+                            {rec?.bloodGlucose ? `${rec.bloodGlucose} mg/dL` : "—"}
+                          </td>
+                          <td className="px-3 py-3 text-muted font-medium">
+                            {apt.doctor?.fullName || "—"}
+                          </td>
+                          <td className="px-3 py-3 text-muted max-w-[180px] truncate" title={rec?.notes || ""}>
+                            {rec?.notes || "No notes"}
+                          </td>
+                          <td className="px-3 py-3 text-right">
+                            <button
+                              onClick={() => setSelectedAptId(apt.id)}
+                              className="rounded-lg border border-border px-2.5 py-1 font-semibold hover:border-primary hover:text-primary transition-colors bg-surface text-muted"
+                            >
+                              View Details
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+
+          {selectedAptId && (
+            <ClinicalRecordModal
+              appointmentId={selectedAptId}
+              onClose={() => {
+                setSelectedAptId(null);
+                loadRecords();
+              }}
+            />
+          )}
         </>
       ) : null}
     </div>
