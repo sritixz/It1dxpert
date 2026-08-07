@@ -5,6 +5,7 @@
 export const NAV_CONFIG = {
   PATIENT: [
     { label: "Dashboard", path: "/patient", icon: "home" },
+    { label: "CareAI Assistant", path: "/patient/ai-assistant", icon: "bot" },
     { label: "Daily Log", path: "/patient/daily-log", icon: "clipboard" },
     { label: "Glucose Trends", path: "/patient/glucose-trends", icon: "chart" },
     { label: "Insulin Records", path: "/patient/insulin-records", icon: "syringe" },

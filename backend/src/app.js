@@ -15,6 +15,7 @@ import adminRoutes from "./routes/admin.routes.js";
 import settingsRoutes from "./routes/settings.routes.js";
 import appointmentRoutes from "./routes/appointment.routes.js";
 import supportRoutes from "./routes/support.routes.js";
+import aiRoutes from "./routes/ai.routes.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
 export const app = express();
@@ -49,6 +50,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/patient/appointments", patientAppointmentRoutes);
 app.use("/api/patient/settings", patientSettingsRoutes);
 app.use("/api/patient", patientRoutes);
+app.use("/api/patient/ai", aiRoutes);
 app.use("/api/doctor/settings", settingsRoutes);
 app.use("/api/doctor/appointments", appointmentRoutes);
 app.use("/api/doctor", doctorRoutes);
