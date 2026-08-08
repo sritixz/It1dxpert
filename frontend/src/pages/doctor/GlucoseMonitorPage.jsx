@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   ArrowLeft, Droplet, Syringe, UtensilsCrossed, Footprints, StickyNote,
+  FolderOpen, FileText, Eye, Trash2, Upload, Loader2, Calendar
 } from "lucide-react";
 import {
   ResponsiveContainer, ComposedChart, Line, XAxis, YAxis, CartesianGrid,
@@ -15,6 +16,11 @@ import {
 } from "recharts";
 import { Card } from "../../components/ui/Card.jsx";
 import { fetchPatientOverview, fetchPatientGlucoseTrends, fetchPatientTimeline, fetchPatientAppointmentRecords } from "../../api/doctor.api.js";
+import { 
+  fetchPatientDocumentsForDoctor, 
+  uploadPrescriptionForPatient, 
+  deletePatientDocumentForDoctor 
+} from "../../api/document.api.js";
 import { ClinicalRecordModal } from "./AppointmentsPage.jsx";
 import { formatTime, formatRelativeTime } from "../../utils/format.js";
 
@@ -45,14 +51,29 @@ export function GlucoseMonitorPage() {
   const [apptRecords, setApptRecords] = useState([]);
   const [selectedAptId, setSelectedAptId] = useState(null);
 
+  // Document states
+  const [documents, setDocuments] = useState([]);
+  const [showUploadForm, setShowUploadForm] = useState(false);
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploadName, setUploadName] = useState("");
+  const [uploadNotes, setUploadNotes] = useState("");
+  const [uploadApptId, setUploadApptId] = useState("");
+  const [isUploadingDoc, setIsUploadingDoc] = useState(false);
+  const [docError, setDocError] = useState("");
+
   function loadRecords() {
     fetchPatientAppointmentRecords(patientId).then(setApptRecords).catch(() => {});
+  }
+
+  function loadDocuments() {
+    fetchPatientDocumentsForDoctor(patientId).then(setDocuments).catch(() => {});
   }
 
   // Patient name/header info only needs fetching once, not on range change.
   useEffect(() => {
     fetchPatientOverview(patientId).catch(() => {}).then((data) => data && setOverview(data));
     loadRecords();
+    loadDocuments();
   }, [patientId]);
 
   useEffect(() => {
@@ -77,6 +98,47 @@ export function GlucoseMonitorPage() {
       cancelled = true;
     };
   }, [patientId, days]);
+
+  const handleDocUpload = async (e) => {
+    e.preventDefault();
+    if (!uploadFile) {
+      setDocError("Please select a file.");
+      return;
+    }
+    setIsUploadingDoc(true);
+    setDocError("");
+
+    try {
+      await uploadPrescriptionForPatient(patientId, {
+        file: uploadFile,
+        notes: uploadNotes,
+        appointmentId: uploadApptId || undefined,
+        customName: uploadName || undefined,
+      });
+      setUploadFile(null);
+      setUploadName("");
+      setUploadNotes("");
+      setUploadApptId("");
+      setShowUploadForm(false);
+      loadDocuments();
+    } catch (err) {
+      console.error("Prescription upload error:", err);
+      setDocError("Failed to upload prescription.");
+    } finally {
+      setIsUploadingDoc(false);
+    }
+  };
+
+  const handleDocDelete = async (docId) => {
+    if (!confirm("Delete this document?")) return;
+    try {
+      await deletePatientDocumentForDoctor(patientId, docId);
+      loadDocuments();
+    } catch (err) {
+      console.error("Delete doc error:", err);
+      alert("Failed to delete document.");
+    }
+  };
 
   const chartData = trends?.series.map((point) => ({
     ...point,
@@ -244,6 +306,175 @@ export function GlucoseMonitorPage() {
                     })}
                   </tbody>
                 </table>
+              </div>
+            )}
+          </Card>
+
+          {/* Medical Files & Doctor Prescriptions */}
+          <Card>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 border-b border-border/50 pb-3">
+              <div>
+                <p className="font-display text-sm font-bold text-ink">Medical Files & Prescriptions</p>
+                <p className="font-body text-xs text-muted">Urine/blood reports uploaded by the patient, and prescriptions logged by doctors.</p>
+              </div>
+              <button
+                onClick={() => { setShowUploadForm(!showUploadForm); setDocError(""); }}
+                className="rounded-lg bg-primary hover:bg-primary-dark px-3 py-1.5 font-display text-xs font-semibold text-white transition-colors flex items-center gap-1 shadow-sm cursor-pointer"
+              >
+                <Upload size={12} /> Upload Prescription
+              </button>
+            </div>
+
+            {/* Upload prescription form */}
+            {showUploadForm && (
+              <form onSubmit={handleDocUpload} className="bg-bg/40 p-4 border border-border rounded-xl mb-5 flex flex-col gap-3 max-w-lg">
+                <h4 className="font-display text-xs font-bold text-ink flex items-center gap-1.5">
+                  <Upload size={14} className="text-primary" /> Upload Prescription PDF/Image
+                </h4>
+                
+                {docError && (
+                  <div className="p-2 border border-critical/30 bg-critical-light text-critical text-xs rounded-lg font-body">
+                    {docError}
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-semibold text-ink">File</label>
+                  <input
+                    type="file"
+                    accept=".pdf,image/*"
+                    onChange={(e) => {
+                      const f = e.target.files[0];
+                      if (f) {
+                        setUploadFile(f);
+                        setUploadName(f.name.split(".")[0]);
+                      }
+                    }}
+                    required
+                    className="font-body text-xs text-ink"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-semibold text-ink">Document Name</label>
+                    <input
+                      type="text"
+                      value={uploadName}
+                      onChange={(e) => setUploadName(e.target.value)}
+                      placeholder="e.g. Prescription August"
+                      className="rounded-lg border border-border bg-surface px-2.5 py-1.5 font-body text-xs text-ink outline-none"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-semibold text-ink">Link to Appointment</label>
+                    <select
+                      value={uploadApptId}
+                      onChange={(e) => setUploadApptId(e.target.value)}
+                      className="rounded-lg border border-border bg-surface px-2.5 py-1.5 font-body text-xs text-ink outline-none cursor-pointer"
+                    >
+                      <option value="">Do not link</option>
+                      {apptRecords.map((apt) => (
+                        <option key={apt.id} value={apt.id}>
+                          {new Date(apt.scheduledAt).toLocaleDateString()} - {apt.type}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-semibold text-ink">Instructions / Notes</label>
+                  <textarea
+                    value={uploadNotes}
+                    onChange={(e) => setUploadNotes(e.target.value)}
+                    placeholder="e.g. Fasting sugar is high, adjusting long-acting dosage"
+                    rows={2}
+                    className="rounded-lg border border-border bg-surface px-2.5 py-1.5 font-body text-xs text-ink outline-none resize-none"
+                  />
+                </div>
+
+                <div className="flex gap-2 justify-end mt-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setShowUploadForm(false)}
+                    className="rounded-lg border border-border px-3 py-1.5 font-semibold text-xs text-muted hover:bg-bg bg-surface cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <Button type="submit" isLoading={isUploadingDoc} className="px-3 py-1.5 rounded-lg text-xs font-bold">
+                    Upload
+                  </Button>
+                </div>
+              </form>
+            )}
+
+            {/* Documents Grid */}
+            {documents.length === 0 ? (
+              <p className="font-body text-xs text-muted py-6">No documents stored on file for this patient.</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {documents.map((doc) => {
+                  const BACKEND_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api").replace("/api", "");
+                  const docUrl = `${BACKEND_URL}${doc.fileUrl}`;
+                  const isPrescription = doc.category === "PRESCRIPTION";
+                  return (
+                    <div key={doc.id} className="rounded-xl border border-border p-3 flex flex-col justify-between gap-3 bg-surface hover:shadow-xs transition-all">
+                      <div className="flex gap-2.5 items-start">
+                        <div className="p-2 bg-bg rounded-lg border border-border/80 flex-shrink-0">
+                          <FileText size={18} className={doc.fileType.includes("pdf") ? "text-red-500" : "text-blue-500"} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold border uppercase tracking-wider ${
+                            isPrescription 
+                              ? "bg-critical-light text-critical border-critical/20" 
+                              : "bg-primary-light text-primary border-primary/20"
+                          }`}>
+                            {doc.category === "LAB_RESULT" ? "Lab Result" : isPrescription ? "Prescription" : "Other"}
+                          </span>
+                          <h5 className="font-display text-xs font-bold text-ink truncate mt-1" title={doc.fileName}>
+                            {doc.fileName}
+                          </h5>
+                          <p className="text-[9px] text-muted font-body mt-0.5">
+                            Uploaded: {new Date(doc.createdAt).toLocaleDateString("en-IN")} by {doc.uploadedBy.toLowerCase()}
+                          </p>
+                        </div>
+                      </div>
+
+                      {doc.notes && (
+                        <p className="text-[10px] text-muted italic font-body bg-bg/50 px-2 py-1.5 rounded-lg border border-border/40">
+                          "{doc.notes}"
+                        </p>
+                      )}
+
+                      <div className="flex items-center justify-between border-t border-border/40 pt-2.5 mt-1 text-xs">
+                        <span className="text-[9px] text-muted font-semibold flex items-center gap-1">
+                          <Calendar size={10} className="text-primary" />
+                          {doc.appointment ? `${doc.appointment.type}` : "General File"}
+                        </span>
+                        
+                        <div className="flex items-center gap-1.5">
+                          <a
+                            href={docUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="p-1 border border-border bg-surface text-muted hover:text-primary hover:border-primary/30 rounded shadow-3xs"
+                            title="View document"
+                          >
+                            <Eye size={12} />
+                          </a>
+                          <button
+                            onClick={() => handleDocDelete(doc.id)}
+                            className="p-1 border border-border bg-surface text-muted hover:text-critical hover:border-critical/30 rounded shadow-3xs cursor-pointer"
+                            title="Delete file"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </Card>
