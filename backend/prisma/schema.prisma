@@ -84,6 +84,7 @@ model Hospital {
   alerts       Alert[]
   appointments Appointment[]
   supportTickets SupportTicket[]
+  patientDocuments PatientDocument[]
 
   @@map("hospitals")
 }
@@ -166,6 +167,7 @@ model PatientProfile {
   streakRecord  StreakRecord?
   patientBadges PatientBadge[]
   appointmentRecords AppointmentRecord[]
+  patientDocuments   PatientDocument[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -437,6 +439,7 @@ model Appointment {
   createdAt   DateTime          @default(now())
 
   appointmentRecord AppointmentRecord?
+  documents         PatientDocument[]
 
   @@index([patientId, scheduledAt])
   @@index([doctorId, scheduledAt])
@@ -530,4 +533,26 @@ model PatientBadge {
 
   @@unique([patientId, badgeId]) // can't earn the same badge twice
   @@map("patient_badges")
+}
+
+model PatientDocument {
+  id            String          @id @default(uuid())
+  patientId     String
+  patient       PatientProfile  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  hospitalId    String
+  hospital      Hospital        @relation(fields: [hospitalId], references: [id])
+  appointmentId String?
+  appointment   Appointment?    @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  fileName      String
+  fileType      String          // e.g. "application/pdf", "image/jpeg", "image/png"
+  fileUrl       String          // e.g. "/uploads/filename"
+  category      String          // "LAB_RESULT" | "PRESCRIPTION" | "OTHER"
+  uploadedBy    String          // "PATIENT" | "DOCTOR"
+  notes         String?
+  createdAt     DateTime        @default(now())
+
+  @@index([patientId])
+  @@index([appointmentId])
+  @@map("patient_documents")
 }
