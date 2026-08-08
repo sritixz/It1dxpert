@@ -1,4 +1,5 @@
 import * as doctorService from "../services/doctor.service.js";
+import * as documentService from "../services/document.service.js";
 
 // req.doctorProfileId is only set for DOCTOR role (see attachDoctorProfile
 // middleware) — undefined for HOSPITAL_ADMIN. That's the entire mechanism
@@ -74,4 +75,41 @@ export async function getPatientAppointmentRecordsController(req, res) {
     doctorProfileId: req.doctorProfileId,
   });
   res.json({ success: true, data: result });
+}
+
+export async function listPatientDocumentsController(req, res) {
+  const { patientId } = req.params;
+  const docs = await documentService.getPatientDocumentsForDoctor(patientId, req.hospitalId);
+  res.json({ success: true, data: docs });
+}
+
+export async function doctorUploadPrescriptionController(req, res) {
+  const { patientId } = req.params;
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: "No file was uploaded." });
+  }
+
+  const { notes, appointmentId, customName } = req.body;
+  const fileName = customName || req.file.originalname;
+  const fileUrl = `/uploads/${req.file.filename}`;
+
+  const doc = await documentService.createDocument({
+    patientId,
+    hospitalId: req.hospitalId,
+    appointmentId: appointmentId || null,
+    fileName,
+    fileType: req.file.mimetype,
+    fileUrl,
+    category: "PRESCRIPTION",
+    uploadedBy: "DOCTOR",
+    notes: notes || null,
+  });
+
+  res.status(201).json({ success: true, data: doc });
+}
+
+export async function doctorDeleteDocumentController(req, res) {
+  const { docId } = req.params;
+  await documentService.deleteDoctorDocument(docId, req.hospitalId);
+  res.json({ success: true, message: "Document deleted successfully." });
 }

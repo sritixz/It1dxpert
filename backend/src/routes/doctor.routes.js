@@ -17,7 +17,11 @@ import {
   markAlertReadController,
   resolveAlertController,
   getPatientAppointmentRecordsController,
+  listPatientDocumentsController,
+  doctorUploadPrescriptionController,
+  doctorDeleteDocumentController,
 } from "../controllers/doctor.controller.js";
+import { upload } from "../middleware/upload.js";
 
 const router = Router();
 
@@ -28,6 +32,9 @@ router.get("/patients/:patientId", asyncHandler(getPatientOverviewController));
 router.get("/patients/:patientId/glucose-trends", asyncHandler(getPatientGlucoseTrendsController));
 router.get("/patients/:patientId/timeline", asyncHandler(getPatientTimelineController));
 router.get("/patients/:patientId/appointment-records", asyncHandler(getPatientAppointmentRecordsController));
+router.get("/patients/:patientId/documents", asyncHandler(listPatientDocumentsController));
+router.post("/patients/:patientId/documents", upload.single("file"), asyncHandler(doctorUploadPrescriptionController));
+router.delete("/patients/:patientId/documents/:docId", asyncHandler(doctorDeleteDocumentController));
 router.get("/alerts", asyncHandler(listAlertsController));
 router.patch("/alerts/:alertId/read", asyncHandler(markAlertReadController));
 router.patch("/alerts/:alertId/resolve", asyncHandler(resolveAlertController));
