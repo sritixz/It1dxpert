@@ -7,6 +7,7 @@ export const NAV_CONFIG = {
     { label: "Dashboard", path: "/patient", icon: "home" },
     { label: "CareAI Assistant", path: "/patient/ai-assistant", icon: "bot" },
     { label: "Carb & Calorie Finder", path: "/patient/carb-calorie", icon: "utensils" },
+    { label: "Medical Documents", path: "/patient/documents", icon: "folder" },
     { label: "Daily Log", path: "/patient/daily-log", icon: "clipboard" },
     { label: "Glucose Trends", path: "/patient/glucose-trends", icon: "chart" },
     { label: "Insulin Records", path: "/patient/insulin-records", icon: "syringe" },

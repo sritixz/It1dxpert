@@ -14,6 +14,7 @@ import { PatientAppointmentsPage } from "./pages/patient/PatientAppointmentsPage
 import { PatientSettingsPage } from "./pages/patient/PatientSettingsPage.jsx";
 import { AiAgentPage } from "./pages/patient/AiAgentPage.jsx";
 import { CarbCalorieFinderPage } from "./pages/patient/CarbCalorieFinderPage.jsx";
+import { MedicalDocumentsPage } from "./pages/patient/MedicalDocumentsPage.jsx";
 import { DoctorDashboardPlaceholder } from "./pages/doctor/DoctorDashboardPlaceholder.jsx";
 import { PatientsListPage } from "./pages/doctor/PatientsListPage.jsx";
 import { GlucoseMonitorPage } from "./pages/doctor/GlucoseMonitorPage.jsx";
@@ -54,6 +55,7 @@ export default function App() {
             <Route path="insulin-records" element={<InsulinRecordsPage />} />
             <Route path="ai-assistant" element={<AiAgentPage />} />
             <Route path="carb-calorie" element={<CarbCalorieFinderPage />} />
+            <Route path="documents" element={<MedicalDocumentsPage />} />
             <Route path="activity" element={<ActivityPage />} />
             <Route path="medications" element={<PlaceholderPage />} />
             <Route path="appointments" element={<PatientAppointmentsPage />} />
