@@ -2,7 +2,7 @@ import { NavLink } from "react-router-dom";
 import {
   Home, ClipboardList, LineChart, Pill, Award, Settings,
   Users, Bell, User, Building2, ShieldCheck, Activity, Calendar, HelpCircle,
-  Syringe, Footprints, Bot,
+  Syringe, Footprints, Bot, Utensils,
 } from "lucide-react";
 
 const ICONS = {
@@ -22,6 +22,7 @@ const ICONS = {
   syringe: Syringe,
   activity: Footprints,
   bot: Bot,
+  utensils: Utensils,
 };
 
 export function Sidebar({ navItems }) {
