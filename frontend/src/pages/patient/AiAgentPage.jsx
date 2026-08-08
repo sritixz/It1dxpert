@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { 
   Send, Bot, User, Sparkles, Loader2, Calendar, 
-  Droplet, Syringe, MessageSquare, AlertCircle, RefreshCw 
+  Droplet, Syringe, MessageSquare, AlertCircle, RefreshCw,
+  Mic, MicOff
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card } from "../../components/ui/Card.jsx";
@@ -17,6 +18,77 @@ export function AiAgentPage() {
   const [error, setError] = useState("");
 
   const messagesEndRef = useRef(null);
+
+  // Speech to Text States
+  const [isRecording, setIsRecording] = useState(false);
+  const [selectedLang, setSelectedLang] = useState("hi-IN"); // Default to Hindi (hi-IN)
+  const recognitionRef = useRef(null);
+
+  const LANGUAGES = [
+    { code: "hi-IN", name: "Hindi (हिंदी)" },
+    { code: "en-US", name: "English" },
+    { code: "es-ES", name: "Spanish (Español)" },
+    { code: "bn-IN", name: "Bengali (বাংলা)" },
+    { code: "ta-IN", name: "Tamil (தமிழ்)" },
+    { code: "te-IN", name: "Telugu (తెలుగు)" },
+    { code: "mr-IN", name: "Marathi (मराठी)" },
+  ];
+
+  // Initialize Speech Recognition
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const rec = new SpeechRecognition();
+      rec.continuous = false;
+      rec.interimResults = false;
+      rec.lang = selectedLang;
+
+      rec.onstart = () => {
+        setIsRecording(true);
+        setError("");
+      };
+
+      rec.onend = () => {
+        setIsRecording(false);
+      };
+
+      rec.onerror = (e) => {
+        console.error("Speech recognition error:", e);
+        if (e.error === "not-allowed") {
+          setError("Microphone permission denied. Please allow microphone access in your browser settings.");
+        } else {
+          setError(`Voice typing error: ${e.error || "unknown"}`);
+        }
+        setIsRecording(false);
+      };
+
+      rec.onresult = (e) => {
+        const transcript = e.results[0][0].transcript;
+        setInputText((prev) => prev + (prev ? " " : "") + transcript);
+      };
+
+      recognitionRef.current = rec;
+    }
+  }, []);
+
+  // Update speech recognition language when user changes selection
+  useEffect(() => {
+    if (recognitionRef.current) {
+      recognitionRef.current.lang = selectedLang;
+    }
+  }, [selectedLang]);
+
+  const toggleRecording = () => {
+    if (isRecording) {
+      recognitionRef.current?.stop();
+    } else {
+      if (!recognitionRef.current) {
+        setError("Speech recognition is not supported in this browser. Please use Google Chrome or Microsoft Edge.");
+        return;
+      }
+      recognitionRef.current.start();
+    }
+  };
 
   // Auto-scroll to bottom of chat
   const scrollToBottom = () => {
@@ -366,20 +438,58 @@ export function AiAgentPage() {
         </div>
 
         {/* Input Bar */}
-        <div className="p-4 border-t border-border bg-bg/20">
-          <div className="flex gap-2">
+        <div className="p-4 border-t border-border bg-bg/20 flex flex-col gap-2">
+          {/* Active Listening Indicator */}
+          {isRecording && (
+            <div className="flex items-center gap-2 text-xs font-semibold font-body text-critical animate-pulse px-1">
+              <span className="h-2 w-2 rounded-full bg-critical inline-block animate-ping"></span>
+              <span>CareAI is listening in {LANGUAGES.find(l => l.code === selectedLang)?.name}... Speak now!</span>
+            </div>
+          )}
+
+          <div className="flex items-center gap-2">
+            {/* Language Selector */}
+            <select
+              value={selectedLang}
+              onChange={(e) => setSelectedLang(e.target.value)}
+              className="rounded-xl border border-border/80 bg-surface px-2 py-3 font-body text-xs text-ink outline-none focus:border-primary shadow-xs transition-colors cursor-pointer"
+              title="Voice typing language"
+            >
+              {LANGUAGES.map((lang) => (
+                <option key={lang.code} value={lang.code}>
+                  {lang.name}
+                </option>
+              ))}
+            </select>
+
             <textarea
               rows={1}
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyDown={handleKeyPress}
-              placeholder="Ask CareAI about your glucose, insulin doses, next appointments, or food tips..."
+              placeholder={isRecording ? "Listening..." : "Ask CareAI or use the voice button to speak..."}
               className="flex-1 max-h-24 resize-none rounded-xl border border-border/80 bg-surface px-4 py-3 font-body text-sm text-ink outline-none focus:border-primary shadow-xs transition-colors"
             />
+
+            {/* Microphone Button */}
+            <button
+              type="button"
+              onClick={toggleRecording}
+              className={`p-3 rounded-xl flex items-center justify-center border shadow-sm transition-all duration-200 ${
+                isRecording 
+                  ? "bg-critical border-critical text-white hover:bg-critical/90 scale-105" 
+                  : "bg-surface border-border/80 text-muted hover:text-ink hover:bg-bg"
+              }`}
+              title={isRecording ? "Stop voice typing" : "Start voice typing"}
+            >
+              {isRecording ? <MicOff size={16} /> : <Mic size={16} />}
+            </button>
+
+            {/* Send Button */}
             <Button
               onClick={() => handleSendMessage()}
-              disabled={isSending || !inputText.trim()}
-              className="px-4 rounded-xl flex items-center justify-center h-full self-end shadow-sm"
+              disabled={isSending || (!inputText.trim() && !isRecording)}
+              className="px-4 py-3 rounded-xl flex items-center justify-center self-stretch shadow-sm"
             >
               <Send size={16} />
             </Button>
