@@ -11,6 +11,7 @@ export const NAV_CONFIG = {
     { label: "Daily Log", path: "/patient/daily-log", icon: "clipboard" },
     { label: "Glucose Trends", path: "/patient/glucose-trends", icon: "chart" },
     { label: "Insulin Records", path: "/patient/insulin-records", icon: "syringe" },
+    { label: "Insulin Advisor", path: "/patient/insulin-advisor", icon: "trending" },
     { label: "Activity", path: "/patient/activity", icon: "activity" },
     { label: "Medications", path: "/patient/medications", icon: "pill" },
     { label: "Appointments", path: "/patient/appointments", icon: "calendar" },
