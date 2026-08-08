@@ -17,6 +17,7 @@ import appointmentRoutes from "./routes/appointment.routes.js";
 import supportRoutes from "./routes/support.routes.js";
 import aiRoutes from "./routes/ai.routes.js";
 import documentRoutes from "./routes/document.routes.js";
+import insulinAdvisorRoutes from "./routes/insulinAdvisor.routes.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
 export const app = express();
@@ -54,6 +55,7 @@ app.use("/api/patient/settings", patientSettingsRoutes);
 app.use("/api/patient", patientRoutes);
 app.use("/api/patient/ai", aiRoutes);
 app.use("/api/patient/documents", documentRoutes);
+app.use("/api/patient/insulin-advisor", insulinAdvisorRoutes);
 app.use("/api/doctor/settings", settingsRoutes);
 app.use("/api/doctor/appointments", appointmentRoutes);
 app.use("/api/doctor", doctorRoutes);
