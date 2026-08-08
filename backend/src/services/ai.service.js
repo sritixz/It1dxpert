@@ -171,3 +171,73 @@ INSTRUCTIONS:
   const responseText = result.response.text();
   return responseText;
 }
+
+/**
+ * Analyze meal nutrients (calories, carbs, protein, fat) from text description or image.
+ * @param {object} params
+ * @param {Buffer} params.fileBuffer Image buffer if uploaded
+ * @param {string} params.mimeType Mime type of the image
+ * @param {string} params.foodDescription Text description of diet
+ * @returns {Promise<object>} Parsed JSON object of nutrients
+ */
+export async function analyzeMealNutrients({ fileBuffer, mimeType, foodDescription }) {
+  if (!genAI) {
+    // Falls back to a mock analysis if no API key is set
+    return {
+      mealName: foodDescription || "Sample Plate",
+      portionEstimate: "1 serving",
+      calories: 380,
+      carbs: 45,
+      protein: 15,
+      fat: 12,
+      glycemicImpact: "Moderate blood glucose rise. (API key not configured in backend, returning mock diagnostics)"
+    };
+  }
+
+  const model = genAI.getGenerativeModel({
+    model: "gemini-1.5-flash",
+    generationConfig: { responseMimeType: "application/json" }
+  });
+
+  const prompt = `Analyze this meal and estimate its nutritional values. 
+Identify the meal name, estimated portion weight/amount, calories (kcal), carbohydrates (g), protein (g), fat (g), and its glycemic impact on blood glucose (especially for diabetes management).
+
+Return a valid JSON object matching this schema exactly:
+{
+  "mealName": "Name of the food identified",
+  "portionEstimate": "Portion weight/portion description, e.g. 250g, 1 plate",
+  "calories": number (integer kcal),
+  "carbs": number (integer grams),
+  "protein": number (integer grams),
+  "fat": number (integer grams),
+  "glycemicImpact": "A short, simple description of the blood sugar rise/impact"
+}`;
+
+  let contents = [];
+  if (fileBuffer) {
+    const imagePart = {
+      inlineData: {
+        data: fileBuffer.toString("base64"),
+        mimeType
+      }
+    };
+    contents.push(imagePart);
+  }
+
+  let queryText = prompt;
+  if (foodDescription) {
+    queryText += `\n\nPatient Description of diet: "${foodDescription}"`;
+  }
+  contents.push({ text: queryText });
+
+  const result = await model.generateContent(contents);
+  const responseText = result.response.text();
+
+  try {
+    return JSON.parse(responseText);
+  } catch (err) {
+    console.error("Failed to parse Gemini JSON output:", responseText);
+    throw new Error("Failed to parse nutrient analysis response.");
+  }
+}
+
