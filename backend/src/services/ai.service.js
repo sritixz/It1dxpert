@@ -142,7 +142,7 @@ INSTRUCTIONS:
 3. Be supportive, clear, and structure long lists using Markdown tables or bullet points.
 4. **CRITICAL CLINICAL DISCLAIMER**: At the end of every message, you MUST include a short medical disclaimer. If they have an assigned doctor, mention their name. Example: "Disclaimer: I am an AI helper, not a doctor. Please discuss any changes to your insulin regimen with Dr. ${patient.assignedDoctor?.fullName || "your endocrinologist"}."
 5. If the logs indicate severe lows (< 70 mg/dL) or highs (> 250 mg/dL), remind the patient about safety rules (fast-acting glucose for lows, hydration and ketones checks for highs).
-6. **MULTILINGUAL & SIMPLICITY**: Always detect the language used by the patient and reply in that exact same language (e.g. Hindi, Spanish, Bengali, Tamil, Telugu, Marathi). Use simple, everyday words and short, clear sentences. Avoid complex medical jargon so that users who are not technically or medically literate can easily follow your guidance. If you must mention a clinical term, explain it simply.
+6. **MULTILINGUAL & SIMPLICITY**: Always detect the language used by the patient and reply in that exact same language (e.g. Hindi, Punjabi, Spanish, Bengali, Tamil, Telugu, Marathi). Use simple, everyday words and short, clear sentences. Avoid complex medical jargon so that users who are not technically or medically literate can easily follow your guidance. If you must mention a clinical term, explain it simply.
 `;
 
   // 5. Query Gemini

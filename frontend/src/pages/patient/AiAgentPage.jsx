@@ -26,6 +26,7 @@ export function AiAgentPage() {
 
   const LANGUAGES = [
     { code: "hi-IN", name: "Hindi (हिंदी)" },
+    { code: "pa-IN", name: "Punjabi (ਪੰਜਾਬੀ)" },
     { code: "en-US", name: "English" },
     { code: "es-ES", name: "Spanish (Español)" },
     { code: "bn-IN", name: "Bengali (বাংলা)" },
