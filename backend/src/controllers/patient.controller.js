@@ -8,11 +8,11 @@ import { prisma } from "../config/db.js";
 import * as logService from "../services/log.service.js";
 import * as medicationService from "../services/medication.service.js";
 
-const glucoseSchema = z.object({ value: z.number().positive(), context: z.string().optional() });
-const insulinSchema = z.object({ units: z.number().positive(), insulinType: z.string().optional(), reason: z.string().optional() });
+const glucoseSchema = z.object({ value: z.number().positive(), context: z.string().optional(), loggedAt: z.string().optional() });
+const insulinSchema = z.object({ units: z.number().positive(), insulinType: z.string().optional(), reason: z.string().optional(), loggedAt: z.string().optional() });
 const insulinUpdateSchema = insulinSchema.partial();
-const mealSchema = z.object({ carbs: z.number().nonnegative(), mealType: z.string().optional(), notes: z.string().optional() });
-const activitySchema = z.object({ durationMins: z.number().int().positive(), activityType: z.string().optional() });
+const mealSchema = z.object({ carbs: z.number().nonnegative(), mealType: z.string().optional(), notes: z.string().optional(), loggedAt: z.string().optional() });
+const activitySchema = z.object({ durationMins: z.number().int().positive(), activityType: z.string().optional(), loggedAt: z.string().optional() });
 const activityUpdateSchema = activitySchema.partial();
 const noteSchema = z.object({ content: z.string().min(1).max(1000) });
 

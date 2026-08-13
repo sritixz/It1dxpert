@@ -14,8 +14,12 @@ async function afterLogCreated(patientId) {
   await checkAndAwardBadges(patientId);
 }
 
-export async function createGlucoseLog({ patientId, hospitalId, value, context }) {
-  const log = await prisma.glucoseLog.create({ data: { patientId, hospitalId, value, context } });
+export async function createGlucoseLog({ patientId, hospitalId, value, context, loggedAt }) {
+  const insertData = { patientId, hospitalId, value, context };
+  if (loggedAt) {
+    insertData.loggedAt = new Date(loggedAt);
+  }
+  const log = await prisma.glucoseLog.create({ data: insertData });
 
   // Per-doctor configurable thresholds (Settings screen) — look up the
   // patient's assigned doctor's custom values, if any, and fall back to
@@ -59,8 +63,12 @@ async function getThresholdsForPatient(patientId) {
   };
 }
 
-export async function createInsulinLog({ patientId, hospitalId, units, insulinType, reason }) {
-  const log = await prisma.insulinLog.create({ data: { patientId, hospitalId, units, insulinType, reason } });
+export async function createInsulinLog({ patientId, hospitalId, units, insulinType, reason, loggedAt }) {
+  const insertData = { patientId, hospitalId, units, insulinType, reason };
+  if (loggedAt) {
+    insertData.loggedAt = new Date(loggedAt);
+  }
+  const log = await prisma.insulinLog.create({ data: insertData });
   await afterLogCreated(patientId);
   return log;
 }
@@ -148,14 +156,22 @@ export async function getInsulinSummary(patientId, days = 7) {
   };
 }
 
-export async function createMealLog({ patientId, hospitalId, carbs, mealType, notes }) {
-  const log = await prisma.mealLog.create({ data: { patientId, hospitalId, carbs, mealType, notes } });
+export async function createMealLog({ patientId, hospitalId, carbs, mealType, notes, loggedAt }) {
+  const insertData = { patientId, hospitalId, carbs, mealType, notes };
+  if (loggedAt) {
+    insertData.loggedAt = new Date(loggedAt);
+  }
+  const log = await prisma.mealLog.create({ data: insertData });
   await afterLogCreated(patientId);
   return log;
 }
 
-export async function createActivityLog({ patientId, hospitalId, durationMins, activityType }) {
-  const log = await prisma.activityLog.create({ data: { patientId, hospitalId, durationMins, activityType } });
+export async function createActivityLog({ patientId, hospitalId, durationMins, activityType, loggedAt }) {
+  const insertData = { patientId, hospitalId, durationMins, activityType };
+  if (loggedAt) {
+    insertData.loggedAt = new Date(loggedAt);
+  }
+  const log = await prisma.activityLog.create({ data: insertData });
   await afterLogCreated(patientId);
   return log;
 }
