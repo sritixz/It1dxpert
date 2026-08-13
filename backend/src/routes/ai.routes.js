@@ -5,7 +5,7 @@ import { authenticate } from "../middleware/authenticate.js";
 import { authorize } from "../middleware/authorize.js";
 import { scopeToHospital } from "../middleware/scopeToHospital.js";
 import { attachPatientProfile } from "../middleware/attachProfile.js";
-import { chatWithAgent, analyzeMealNutrients } from "../services/ai.service.js";
+import { chatWithAgent, analyzeMealNutrients, extractLogsFromDoc } from "../services/ai.service.js";
 
 const router = Router();
 
@@ -13,7 +13,7 @@ const router = Router();
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 8 * 1024 * 1024, // 8MB limit
+    fileSize: 10 * 1024 * 1024, // 10MB limit
   },
 });
 
@@ -75,6 +75,35 @@ router.post(
     res.json({
       success: true,
       data: analysisResult,
+    });
+  })
+);
+
+/**
+ * POST /api/patient/ai/extract-logs
+ * Request: Multipart (file: 'docFile')
+ */
+router.post(
+  "/extract-logs",
+  upload.single("docFile"),
+  asyncHandler(async (req, res) => {
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({
+        success: false,
+        message: "No document file was uploaded.",
+      });
+    }
+
+    const extractionResult = await extractLogsFromDoc({
+      fileBuffer: file.buffer,
+      mimeType: file.mimetype,
+    });
+
+    res.json({
+      success: true,
+      data: extractionResult,
     });
   })
 );

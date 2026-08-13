@@ -147,7 +147,7 @@ INSTRUCTIONS:
 
   // 5. Query Gemini
   const model = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash",
+    model: "gemini-3.5-flash",
     systemInstruction: systemInstruction,
   });
 
@@ -195,7 +195,7 @@ export async function analyzeMealNutrients({ fileBuffer, mimeType, foodDescripti
   }
 
   const model = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash",
+    model: "gemini-3.5-flash",
     generationConfig: { responseMimeType: "application/json" }
   });
 
@@ -240,4 +240,81 @@ Return a valid JSON object matching this schema exactly:
     throw new Error("Failed to parse nutrient analysis response.");
   }
 }
+
+/**
+ * Extract blood glucose, insulin, and meal logs from a hand-written or printed medical document/image.
+ * @param {object} params
+ * @param {Buffer} params.fileBuffer Document file buffer
+ * @param {string} params.mimeType File MIME type
+ * @returns {Promise<object>} Object containing an array of extracted logs
+ */
+export async function extractLogsFromDoc({ fileBuffer, mimeType }) {
+  if (!genAI) {
+    throw new Error("Gemini API key is not configured in backend.");
+  }
+
+  const model = genAI.getGenerativeModel({
+    model: "gemini-3.5-flash",
+    generationConfig: { responseMimeType: "application/json" }
+  });
+
+  const fileData = {
+    inlineData: {
+      data: fileBuffer.toString("base64"),
+      mimeType
+    }
+  };
+
+  const systemPrompt = `You are a medical document OCR assistant specializing in diabetes logbooks. 
+Your task is to analyze the uploaded document (which can be a handwritten diary page in Gurmukhi/Punjabi or English, a laboratory report, a photo of a blood glucose meter screen, or doctor notes) and extract any recorded data points for:
+1. Blood Glucose readings
+2. Insulin doses
+3. Meals / Food intake
+
+Understand regional scripts (like Gurmukhi/Punjabi). For example:
+- "ਸਵੇਰ" or "ਸਵੇਰ ਦੀ" means Morning (usually Fasting)
+- "ਦੁਪਹਿਰ" means Afternoon
+- "ਸ਼ਾਮ" means Evening
+- "ਰਾਤ" or "ਰਾਤ ਦਾ" means Night / Bedtime
+- "ਸ਼ੂਗਰ" means Sugar/Glucose
+- "ਟੀਕਾ" means Injection/Insulin dose
+- "ਖਾਣਾ" or details like "ਰੋਟੀ", "ਦਾਲ", "ਪਰਾਂਠਾ", "ਦੁੱਧ", "ਚਾਹ" mean meals/carbohydrates.
+
+Also, resolve dates:
+Look at the dates column (typically written on the left in a diary, like "1-8-26", "2-8-26", "03-08-26").
+For each log item, determine the date. The year "26" stands for 2026.
+Map columns (Morning, Afternoon, Evening, Night) to estimate approximate times (e.g. Morning = 8:00 AM, Afternoon = 1:00 PM, Evening = 5:30 PM, Night = 8:30 PM) on that date. If a date cannot be found, use the current year (2026) with the month/day if visible. If no date is found whatsoever, return null for loggedAt.
+
+Structure the output in a JSON object with this EXACT schema:
+{
+  "extractedLogs": [
+    {
+      "type": "glucose" | "insulin" | "meal",
+      "value": number, // glucose value in mg/dL, insulin units, or estimated carb grams
+      "context": "Fasting | Pre-Meal | Post-Meal | Bedtime | General", // relevant for glucose
+      "insulinType": "Rapid-Acting | Long-Acting | Premixed", // if known (e.g. ਟੀਕਾ value maps to combinations, default to Rapid-Acting if meal-time, Long-Acting if bedtime)
+      "reason": "Meal Bolus | Correction | Basal", // for insulin
+      "mealType": "Breakfast | Lunch | Dinner | Snack", // for meal
+      "notes": "Food description in English (e.g., 'Paratha and milk', 'Roti and Dal') or observations", // translate Punjabi food names to English
+      "loggedAt": "ISO date string, e.g. 2026-08-04T08:00:00.000Z"
+    }
+  ]
+}
+
+Double check:
+- Be highly accurate. Only extract logs that are explicitly written. If a cell is empty or has a line, skip it.
+- Convert food items like "ਪਰਾਂਠਾ" to "Paratha", "ਰੋਟੀ" to "Roti", "ਚਾਹ" to "Tea", "ਦਾਲ" to "Dal", "ਸਬਜ਼ੀ" to "Sabzi".
+- For compound insulin doses like "8+0", it means 8 units were taken (log value as 8). If it says "8+2" or "8+3", it's two separate entries or a combined dose (log the sum and add "8+3 units" to the notes, or log the primary dosage). Return the sum as the value (e.g. for "8+3" return 11).`;
+
+  const result = await model.generateContent([fileData, systemPrompt]);
+  const responseText = result.response.text();
+
+  try {
+    return JSON.parse(responseText);
+  } catch (err) {
+    console.error("Failed to parse Gemini log extraction output:", responseText);
+    throw new Error("Failed to parse logs from document.");
+  }
+}
+
 
