@@ -8,7 +8,6 @@ import { Button } from "../../components/ui/Button.jsx";
 import { Input } from "../../components/ui/Input.jsx";
 import { fetchPatientDocuments, uploadPatientDocument, deletePatientDocument } from "../../api/document.api.js";
 import { fetchMyAppointments } from "../../api/patient.api.js";
-import { formatDate } from "../../utils/format.js";
 
 const CATEGORIES = [
   { key: "ALL", label: "All Documents" },
@@ -215,7 +214,7 @@ export function MedicalDocumentsPage() {
                 <option value="">Do not link to appointment</option>
                 {appointments.map((appt) => (
                   <option key={appt.id} value={appt.id}>
-                    {formatDate(appt.scheduledAt)} - {appt.type}
+                    {new Date(appt.scheduledAt).toLocaleDateString()} - {appt.type}
                   </option>
                 ))}
               </select>
