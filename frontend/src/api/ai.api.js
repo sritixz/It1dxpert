@@ -38,3 +38,21 @@ export async function analyzeMealImage(imageFile) {
   return data.data;
 }
 
+/**
+ * Extract diabetes logs from a handwritten log diary or device screen photo
+ * @param {File} docFile Image file
+ * @returns {Promise<object>} JSON array of identified logs
+ */
+export async function extractLogsFromDocument(docFile) {
+  const formData = new FormData();
+  formData.append("docFile", docFile);
+
+  const { data } = await apiClient.post("/patient/ai/extract-logs", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+  return data.data; // returns { extractedLogs: [...] }
+}
+
+

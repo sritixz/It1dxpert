@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { 
   Droplet, Syringe, UtensilsCrossed, Footprints, Flame, Award, 
-  Plus, Check, X, Loader2, ChevronRight, AlertCircle, Sparkles
+  Plus, Check, X, Loader2, ChevronRight, AlertCircle, Sparkles, Upload, Calendar
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card } from "../../components/ui/Card.jsx";
@@ -14,6 +14,7 @@ import {
   logActivity,
   fetchGamificationStatus 
 } from "../../api/patient.api.js";
+import { extractLogsFromDocument } from "../../api/ai.api.js";
 
 export function PatientDashboardPlaceholder() {
   const { user } = useAuth();
@@ -24,10 +25,16 @@ export function PatientDashboardPlaceholder() {
   
   // Quick Log Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [activeLogType, setActiveLogType] = useState("glucose"); // 'glucose' | 'insulin' | 'meal' | 'activity'
+  const [activeLogType, setActiveLogType] = useState("glucose"); // 'glucose' | 'insulin' | 'meal' | 'activity' | 'ai-scan'
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [submitSuccess, setSubmitSuccess] = useState("");
+
+  // AI Document Scanner States
+  const [aiFile, setAiFile] = useState(null);
+  const [isScanning, setIsScanning] = useState(false);
+  const [scannedLogs, setScannedLogs] = useState([]);
+  const [isManualGrid, setIsManualGrid] = useState(false);
 
   // Form states
   const [glucoseValue, setGlucoseValue] = useState("");
@@ -89,6 +96,12 @@ export function PatientDashboardPlaceholder() {
     setMealNotes("");
     setInsulinUnits("");
     setActivityMins("");
+
+    // Reset AI Scanner values
+    setAiFile(null);
+    setIsScanning(false);
+    setScannedLogs([]);
+    setIsManualGrid(false);
   };
 
   const handleSubmit = async (e) => {
@@ -124,6 +137,90 @@ export function PatientDashboardPlaceholder() {
     } catch (err) {
       console.error("Error logging entry:", err);
       setSubmitError(err.message || err.response?.data?.message || "Failed to log entry.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleAiUploadChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setAiFile(file);
+    setIsScanning(true);
+    setSubmitError("");
+    setSubmitSuccess("");
+
+    try {
+      const data = await extractLogsFromDocument(file);
+      if (data && data.extractedLogs && data.extractedLogs.length > 0) {
+        const logsWithSelection = data.extractedLogs.map(log => ({
+          ...log,
+          selected: true
+        }));
+        setScannedLogs(logsWithSelection);
+      } else {
+        setScannedLogs([]);
+        setSubmitError("We couldn't identify any logs in the document. Try a clearer image or use the manual grid.");
+        setIsManualGrid(true);
+      }
+    } catch (err) {
+      console.error("AI log extraction failed:", err);
+      setSubmitError(err.response?.data?.message || "AI failed to scan this document. Try manual grid logging.");
+      setIsManualGrid(true);
+      setScannedLogs([
+        {
+          type: "glucose",
+          value: 120,
+          context: "Pre-Meal",
+          selected: true,
+          loggedAt: new Date().toISOString()
+        }
+      ]);
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  const handleSaveExtractedLogs = async () => {
+    setSubmitting(true);
+    setSubmitError("");
+    setSubmitSuccess("");
+
+    const logsToSave = scannedLogs.filter(log => log.selected);
+    try {
+      for (const log of logsToSave) {
+        if (log.type === "glucose") {
+          await logGlucose({
+            value: log.value,
+            context: log.context || "Other",
+            loggedAt: log.loggedAt || undefined
+          });
+        } else if (log.type === "insulin") {
+          await logInsulin({
+            units: log.value,
+            insulinType: log.insulinType || "Glargine (Long Acting)",
+            reason: log.reason || "Meal Bolus",
+            loggedAt: log.loggedAt || undefined
+          });
+        } else if (log.type === "meal") {
+          await logMeal({
+            carbs: log.value,
+            mealType: log.mealType || "Breakfast",
+            notes: log.notes || undefined,
+            loggedAt: log.loggedAt || undefined
+          });
+        }
+      }
+
+      setSubmitSuccess(`Logged ${logsToSave.length} items successfully!`);
+      setTimeout(() => {
+        closeLogModal();
+        loadData();
+      }, 1500);
+    } catch (err) {
+      console.error("Failed to save AI extracted logs:", err);
+      setSubmitError(err.response?.data?.message || err.message || "Failed to save logs to diary.");
     } finally {
       setSubmitting(false);
     }
@@ -220,9 +317,15 @@ export function PatientDashboardPlaceholder() {
           </button>
           <button 
             onClick={() => openLogModal("activity")} 
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-success-light text-success hover:bg-success hover:text-white font-body text-xs font-semibold transition-all shadow-sm"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-success-light text-success hover:bg-success hover:text-white font-body text-xs font-semibold transition-all shadow-sm animate-fade-in"
           >
             <Plus size={14} /> Log Activity
+          </button>
+          <button 
+            onClick={() => openLogModal("ai-scan")} 
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white font-body text-xs font-semibold transition-all shadow-sm border border-indigo-100/50 cursor-pointer"
+          >
+            <Sparkles size={14} className="animate-pulse" /> AI Document Scan
           </button>
         </div>
       </div>
@@ -488,7 +591,9 @@ export function PatientDashboardPlaceholder() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-surface rounded-card shadow-lg border border-border w-full max-w-md overflow-hidden"
+              className={`bg-surface rounded-card shadow-lg border border-border w-full transition-all duration-300 overflow-hidden ${
+                activeLogType === "ai-scan" ? "max-w-3xl" : "max-w-md"
+              }`}
             >
               {/* Modal Header */}
               <div className="flex items-center justify-between p-4 border-b border-border bg-bg">
@@ -496,232 +601,589 @@ export function PatientDashboardPlaceholder() {
                   <div className={`p-1.5 rounded-lg ${
                     activeLogType === "glucose" ? "bg-primary-light text-primary" :
                     activeLogType === "insulin" ? "bg-critical-light text-critical" :
-                    activeLogType === "meal" ? "bg-warning-light text-warning" : "bg-success-light text-success"
+                    activeLogType === "meal" ? "bg-warning-light text-warning" : 
+                    activeLogType === "ai-scan" ? "bg-indigo-50 text-indigo-600" : "bg-success-light text-success"
                   }`}>
                     {activeLogType === "glucose" && <Droplet size={16} />}
                     {activeLogType === "insulin" && <Syringe size={16} />}
                     {activeLogType === "meal" && <UtensilsCrossed size={16} />}
                     {activeLogType === "activity" && <Footprints size={16} />}
+                    {activeLogType === "ai-scan" && <Sparkles size={16} className="animate-pulse" />}
                   </div>
                   <h3 className="font-display text-sm font-bold text-ink capitalize">
-                    Log {activeLogType === "meal" ? "Meals/Carbs" : activeLogType}
+                    {activeLogType === "ai-scan" ? "AI Smart Log Scan" : `Log ${activeLogType === "meal" ? "Meals/Carbs" : activeLogType}`}
                   </h3>
                 </div>
                 <button 
                   onClick={closeLogModal}
-                  className="p-1 rounded-lg text-muted hover:bg-bg hover:text-ink transition-colors"
+                  className="p-1 rounded-lg text-muted hover:bg-bg hover:text-ink transition-colors cursor-pointer"
                 >
                   <X size={16} />
                 </button>
               </div>
 
               {/* Modal Form */}
-              <form onSubmit={handleSubmit} className="p-4 space-y-4">
-                {/* Error Banner */}
-                {submitError && (
-                  <div className="flex items-center gap-1.5 p-2.5 rounded-lg border border-critical/30 bg-critical-light text-critical text-xs">
-                    <AlertCircle size={14} />
-                    <span>{submitError}</span>
-                  </div>
-                )}
+              {/* Standard Forms */}
+              {activeLogType !== "ai-scan" ? (
+                <form onSubmit={handleSubmit} className="p-4 space-y-4">
+                  {/* Error Banner */}
+                  {submitError && (
+                    <div className="flex items-center gap-1.5 p-2.5 rounded-lg border border-critical/30 bg-critical-light text-critical text-xs">
+                      <AlertCircle size={14} />
+                      <span>{submitError}</span>
+                    </div>
+                  )}
 
-                {/* Success Banner */}
-                {submitSuccess && (
-                  <div className="flex items-center gap-1.5 p-2.5 rounded-lg border border-success/30 bg-success-light text-success text-xs">
-                    <Check size={14} strokeWidth={3} />
-                    <span>{submitSuccess}</span>
-                  </div>
-                )}
+                  {/* Success Banner */}
+                  {submitSuccess && (
+                    <div className="flex items-center gap-1.5 p-2.5 rounded-lg border border-success/30 bg-success-light text-success text-xs">
+                      <Check size={14} strokeWidth={3} />
+                      <span>{submitSuccess}</span>
+                    </div>
+                  )}
 
-                {/* --- Glucose Form Fields --- */}
-                {activeLogType === "glucose" && (
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-ink mb-1">
-                        Glucose Level (mg/dL)
-                      </label>
-                      <input
-                        type="number"
-                        required
-                        value={glucoseValue}
-                        onChange={(e) => setGlucoseValue(e.target.value)}
-                        placeholder="e.g. 120"
-                        className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-primary text-ink"
-                      />
+                  {/* --- Glucose Form Fields --- */}
+                  {activeLogType === "glucose" && (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-ink mb-1">
+                          Glucose Level (mg/dL)
+                        </label>
+                        <input
+                          type="number"
+                          required
+                          value={glucoseValue}
+                          onChange={(e) => setGlucoseValue(e.target.value)}
+                          placeholder="e.g. 120"
+                          className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-primary text-ink"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-ink mb-1">
+                          Context/Timing
+                        </label>
+                        <select
+                          value={glucoseContext}
+                          onChange={(e) => setGlucoseContext(e.target.value)}
+                          className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-primary text-ink"
+                        >
+                          <option value="Pre-Meal">Pre-Meal</option>
+                          <option value="Post-Meal">Post-Meal</option>
+                          <option value="Fasting">Fasting</option>
+                          <option value="Bedtime">Bedtime</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-ink mb-1">
-                        Context/Timing
-                      </label>
-                      <select
-                        value={glucoseContext}
-                        onChange={(e) => setGlucoseContext(e.target.value)}
-                        className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-primary text-ink"
-                      >
-                        <option value="Pre-Meal">Pre-Meal</option>
-                        <option value="Post-Meal">Post-Meal</option>
-                        <option value="Fasting">Fasting</option>
-                        <option value="Bedtime">Bedtime</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
-                  </div>
-                )}
+                  )}
 
-                {/* --- Insulin Form Fields --- */}
-                {activeLogType === "insulin" && (
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-ink mb-1">
-                        Dose (units)
-                      </label>
-                      <input
-                        type="number"
-                        step="0.5"
-                        required
-                        value={insulinUnits}
-                        onChange={(e) => setInsulinUnits(e.target.value)}
-                        placeholder="e.g. 6.5"
-                        className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-primary text-ink"
-                      />
+                  {/* --- Insulin Form Fields --- */}
+                  {activeLogType === "insulin" && (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-ink mb-1">
+                          Dose (units)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.5"
+                          required
+                          value={insulinUnits}
+                          onChange={(e) => setInsulinUnits(e.target.value)}
+                          placeholder="e.g. 6.5"
+                          className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-primary text-ink"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-ink mb-1">
+                          Insulin Type
+                        </label>
+                        <select
+                          value={insulinType}
+                          onChange={(e) => setInsulinType(e.target.value)}
+                          className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-primary text-ink"
+                        >
+                          <option value="Lispro (Meal Time)">Lispro (Meal Time)</option>
+                          <option value="Glargine (Long Acting)">Glargine (Long Acting)</option>
+                          <option value="Aspart (Rapid)">Aspart (Rapid)</option>
+                          <option value="Detemir (Basal)">Detemir (Basal)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-ink mb-1">
+                          Reason
+                        </label>
+                        <select
+                          value={insulinReason}
+                          onChange={(e) => setInsulinReason(e.target.value)}
+                          className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-primary text-ink"
+                        >
+                          <option value="Meal Bolus">Meal Bolus</option>
+                          <option value="Correction">Correction</option>
+                          <option value="Basal Dose">Basal Dose</option>
+                          <option value="Snack Bolus">Snack Bolus</option>
+                        </select>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-ink mb-1">
-                        Insulin Type
-                      </label>
-                      <select
-                        value={insulinType}
-                        onChange={(e) => setInsulinType(e.target.value)}
-                        className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-primary text-ink"
-                      >
-                        <option value="Lispro (Meal Time)">Lispro (Meal Time)</option>
-                        <option value="Glargine (Long Acting)">Glargine (Long Acting)</option>
-                        <option value="Aspart (Rapid)">Aspart (Rapid)</option>
-                        <option value="Detemir (Basal)">Detemir (Basal)</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-ink mb-1">
-                        Reason
-                      </label>
-                      <select
-                        value={insulinReason}
-                        onChange={(e) => setInsulinReason(e.target.value)}
-                        className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-primary text-ink"
-                      >
-                        <option value="Meal Bolus">Meal Bolus</option>
-                        <option value="Correction">Correction</option>
-                        <option value="Basal Dose">Basal Dose</option>
-                        <option value="Snack Bolus">Snack Bolus</option>
-                      </select>
-                    </div>
-                  </div>
-                )}
+                  )}
 
-                {/* --- Meal Form Fields --- */}
-                {activeLogType === "meal" && (
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-ink mb-1">
-                        Carbohydrates (grams)
-                      </label>
-                      <input
-                        type="number"
-                        required
-                        value={carbValue}
-                        onChange={(e) => setCarbValue(e.target.value)}
-                        placeholder="e.g. 45"
-                        className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-primary text-ink"
-                      />
+                  {/* --- Meal Form Fields --- */}
+                  {activeLogType === "meal" && (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-ink mb-1">
+                          Carbohydrates (grams)
+                        </label>
+                        <input
+                          type="number"
+                          required
+                          value={carbValue}
+                          onChange={(e) => setCarbValue(e.target.value)}
+                          placeholder="e.g. 45"
+                          className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-primary text-ink"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-ink mb-1">
+                          Meal Type
+                        </label>
+                        <select
+                          value={mealType}
+                          onChange={(e) => setMealType(e.target.value)}
+                          className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-primary text-ink"
+                        >
+                          <option value="Breakfast">Breakfast</option>
+                          <option value="Lunch">Lunch</option>
+                          <option value="Dinner">Dinner</option>
+                          <option value="Snack">Snack</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-ink mb-1">
+                          Notes / Food Description
+                        </label>
+                        <input
+                          type="text"
+                          value={mealNotes}
+                          onChange={(e) => setMealNotes(e.target.value)}
+                          placeholder="e.g. Chicken wrap & apple"
+                          className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-primary text-ink"
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-ink mb-1">
-                        Meal Type
-                      </label>
-                      <select
-                        value={mealType}
-                        onChange={(e) => setMealType(e.target.value)}
-                        className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-primary text-ink"
-                      >
-                        <option value="Breakfast">Breakfast</option>
-                        <option value="Lunch">Lunch</option>
-                        <option value="Dinner">Dinner</option>
-                        <option value="Snack">Snack</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-ink mb-1">
-                        Notes / Food Description
-                      </label>
-                      <input
-                        type="text"
-                        value={mealNotes}
-                        onChange={(e) => setMealNotes(e.target.value)}
-                        placeholder="e.g. Chicken wrap & apple"
-                        className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-primary text-ink"
-                      />
-                    </div>
-                  </div>
-                )}
+                  )}
 
-                {/* --- Activity Form Fields --- */}
-                {activeLogType === "activity" && (
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-ink mb-1">
-                        Duration (minutes)
-                      </label>
-                      <input
-                        type="number"
-                        required
-                        value={activityMins}
-                        onChange={(e) => setActivityMins(e.target.value)}
-                        placeholder="e.g. 30"
-                        className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-primary text-ink"
-                      />
+                  {/* --- Activity Form Fields --- */}
+                  {activeLogType === "activity" && (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-ink mb-1">
+                          Duration (minutes)
+                        </label>
+                        <input
+                          type="number"
+                          required
+                          value={activityMins}
+                          onChange={(e) => setActivityMins(e.target.value)}
+                          placeholder="e.g. 30"
+                          className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-primary text-ink"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-ink mb-1">
+                          Activity Type
+                        </label>
+                        <select
+                          value={activityType}
+                          onChange={(e) => setActivityType(e.target.value)}
+                          className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-primary text-ink"
+                        >
+                          <option value="Walking">Walking</option>
+                          <option value="Running">Running</option>
+                          <option value="Cycling">Cycling</option>
+                          <option value="Swimming">Swimming</option>
+                          <option value="Gym Training">Gym Training</option>
+                          <option value="Yoga">Yoga</option>
+                        </select>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-ink mb-1">
-                        Activity Type
-                      </label>
-                      <select
-                        value={activityType}
-                        onChange={(e) => setActivityType(e.target.value)}
-                        className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-primary text-ink"
-                      >
-                        <option value="Walking">Walking</option>
-                        <option value="Running">Running</option>
-                        <option value="Cycling">Cycling</option>
-                        <option value="Swimming">Swimming</option>
-                        <option value="Gym Training">Gym Training</option>
-                        <option value="Yoga">Yoga</option>
-                      </select>
-                    </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Submit button */}
-                <div className="flex gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={closeLogModal}
-                    className="flex-1 py-2 rounded-lg border border-border font-body text-xs font-semibold text-muted hover:bg-bg transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="flex-1 flex justify-center items-center gap-1.5 py-2 rounded-lg bg-primary text-white font-body text-xs font-semibold hover:bg-primary/95 transition-all shadow-sm"
-                  >
-                    {submitting ? (
-                      <Loader2 size={12} className="animate-spin" />
-                    ) : (
-                      "Save Log"
-                    )}
-                  </button>
+                  {/* Submit button */}
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={closeLogModal}
+                      className="flex-1 py-2 rounded-lg border border-border font-body text-xs font-semibold text-muted hover:bg-bg transition-colors cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      className="flex-1 flex justify-center items-center gap-1.5 py-2 rounded-lg bg-primary text-white font-body text-xs font-semibold hover:bg-primary/95 transition-all shadow-sm cursor-pointer"
+                    >
+                      {submitting ? (
+                        <Loader2 size={12} className="animate-spin" />
+                      ) : (
+                        "Save Log"
+                      )}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                /* --- AI Smart Log Scan modal UI --- */
+                <div className="flex flex-col h-[520px]">
+                  
+                  {/* Phase 1: Upload Dropzone */}
+                  {!aiFile && !isManualGrid && (
+                    <div className="flex flex-col items-center justify-center flex-1 p-6 text-center gap-4">
+                      <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-full text-indigo-600 animate-bounce">
+                        <Upload size={32} />
+                      </div>
+                      <div>
+                        <h4 className="font-display text-sm font-bold text-ink">Scan Handwritten Log or Screen</h4>
+                        <p className="font-body text-xs text-muted max-w-xs mt-1 leading-relaxed">
+                          Take a photo or upload a document of your paper log notebook (in Punjabi or English) or your glucose meter.
+                        </p>
+                      </div>
+                      
+                      <div className="w-full max-w-xs">
+                        <input
+                          type="file"
+                          id="doc-ocr-upload"
+                          accept="image/*,application/pdf"
+                          onChange={handleAiUploadChange}
+                          className="hidden"
+                        />
+                        <label
+                          htmlFor="doc-ocr-upload"
+                          className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-lg border border-border bg-bg/50 hover:bg-bg cursor-pointer text-xs font-semibold text-ink transition-colors shadow-2xs"
+                        >
+                          <Upload size={14} /> Select Document
+                        </label>
+                      </div>
+                      
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="text-muted">Or skip scanning:</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsManualGrid(true);
+                            setScannedLogs([
+                              {
+                                type: "glucose",
+                                value: 120,
+                                context: "Pre-Meal",
+                                selected: true,
+                                loggedAt: new Date().toISOString()
+                              }
+                            ]);
+                          }}
+                          className="text-primary font-bold hover:underline cursor-pointer"
+                        >
+                          Start Manual Batch Grid
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Phase 2: Scanning Loader */}
+                  {isScanning && (
+                    <div className="flex flex-col items-center justify-center flex-1 p-6 text-center gap-3">
+                      <Loader2 size={36} className="animate-spin text-indigo-600" />
+                      <h4 className="font-display text-sm font-bold text-ink">CareAI is reading your document...</h4>
+                      <p className="font-body text-xs text-muted max-w-xs mt-1 leading-relaxed">
+                        Translating regional scripts, matching time column headers, and mapping logs. This will take a moment.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Phase 3: Split-View Checklist & Image Review */}
+                  {((scannedLogs.length > 0 && !isScanning) || isManualGrid) && (
+                    <div className="flex flex-1 min-h-0 overflow-hidden">
+                      
+                      {/* Left Pane: Image / Status Preview */}
+                      <div className="w-2/5 border-r border-border bg-bg/25 flex flex-col justify-center items-center p-4 min-h-0 select-none">
+                        <span className="text-[9px] font-extrabold text-muted uppercase tracking-wider mb-2">Logged Preview</span>
+                        {aiFile ? (
+                          <div className="border border-border rounded-lg bg-surface p-1.5 w-full h-full max-h-[380px] flex items-center justify-center overflow-hidden">
+                            {aiFile.type.startsWith("image/") ? (
+                              <img
+                                src={URL.createObjectURL(aiFile)}
+                                alt="Log sheet source"
+                                className="w-full h-full object-contain max-h-[350px] rounded"
+                              />
+                            ) : (
+                              <div className="flex flex-col items-center justify-center p-6 text-muted text-center">
+                                <FileText size={32} className="text-indigo-400 mb-2" />
+                                <span className="text-xs font-semibold text-ink truncate max-w-[120px]">{aiFile.name}</span>
+                                <span className="text-[8px] text-muted mt-1">(PDF View)</span>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center p-6 text-muted text-center">
+                            <Sparkles size={32} className="text-indigo-400 mb-2" />
+                            <span className="text-xs font-semibold text-ink">Manual Grid View</span>
+                            <p className="text-[10px] text-muted mt-1 max-w-[150px]">Enter your logs side-by-side manually.</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right Pane: Logs List Form */}
+                      <div className="w-3/5 flex flex-col justify-between p-4 min-h-0">
+                        {submitError && (
+                          <div className="flex items-center gap-1.5 p-2 rounded-lg border border-critical/30 bg-critical-light text-critical text-[10px] mb-2">
+                            <AlertCircle size={12} />
+                            <span>{submitError}</span>
+                          </div>
+                        )}
+
+                        {submitSuccess && (
+                          <div className="flex items-center gap-1.5 p-2 rounded-lg border border-success/30 bg-success-light text-success text-[10px] mb-2">
+                            <Check size={12} strokeWidth={3} />
+                            <span>{submitSuccess}</span>
+                          </div>
+                        )}
+
+                        <div className="space-y-3.5 flex-1 overflow-y-auto max-h-[400px] pr-1.5">
+                          {scannedLogs.map((log, idx) => (
+                            <div key={idx} className="border border-border/80 rounded-xl p-3.5 bg-surface shadow-2xs flex flex-col gap-2.5">
+                              
+                              {/* Log Header Checkbox */}
+                              <div className="flex items-center justify-between border-b border-border/40 pb-2">
+                                <div className="flex items-center gap-1.5">
+                                  <input
+                                    type="checkbox"
+                                    checked={log.selected}
+                                    onChange={() => {
+                                      const updated = [...scannedLogs];
+                                      updated[idx].selected = !updated[idx].selected;
+                                      setScannedLogs(updated);
+                                    }}
+                                    className="w-3.5 h-3.5 accent-primary cursor-pointer"
+                                  />
+                                  <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold border uppercase tracking-wider ${
+                                    log.type === "glucose" ? "bg-primary-light text-primary border-primary/20" :
+                                    log.type === "insulin" ? "bg-critical-light text-critical border-critical/20" :
+                                    "bg-warning-light text-warning border-warning/20"
+                                  }`}>
+                                    {log.type}
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setScannedLogs(scannedLogs.filter((_, i) => i !== idx))}
+                                  className="text-[10px] text-muted hover:text-critical font-bold transition-colors cursor-pointer"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+
+                              {/* Form Fields: Glucose */}
+                              {log.type === "glucose" && (
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                  <div className="flex flex-col gap-0.5">
+                                    <label className="text-[9px] font-bold text-ink">Glucose (mg/dL)</label>
+                                    <input
+                                      type="number"
+                                      value={log.value}
+                                      onChange={(e) => {
+                                        const updated = [...scannedLogs];
+                                        updated[idx].value = parseFloat(e.target.value) || 0;
+                                        setScannedLogs(updated);
+                                      }}
+                                      className="border border-border bg-bg/50 px-2.5 py-1.5 rounded-lg outline-none text-ink font-semibold focus:border-primary"
+                                    />
+                                  </div>
+                                  <div className="flex flex-col gap-0.5">
+                                    <label className="text-[9px] font-bold text-ink">Context</label>
+                                    <select
+                                      value={log.context || "Fasting"}
+                                      onChange={(e) => {
+                                        const updated = [...scannedLogs];
+                                        updated[idx].context = e.target.value;
+                                        setScannedLogs(updated);
+                                      }}
+                                      className="border border-border bg-bg/50 px-2 py-1.5 rounded-lg outline-none text-ink cursor-pointer focus:border-primary"
+                                    >
+                                      <option value="Fasting">Fasting</option>
+                                      <option value="Pre-Meal">Pre-Meal</option>
+                                      <option value="Post-Meal">Post-Meal</option>
+                                      <option value="Bedtime">Bedtime</option>
+                                      <option value="Other">Other</option>
+                                    </select>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Form Fields: Insulin */}
+                              {log.type === "insulin" && (
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                  <div className="flex flex-col gap-0.5">
+                                    <label className="text-[9px] font-bold text-ink">Insulin Units</label>
+                                    <input
+                                      type="number"
+                                      step="0.5"
+                                      value={log.value}
+                                      onChange={(e) => {
+                                        const updated = [...scannedLogs];
+                                        updated[idx].value = parseFloat(e.target.value) || 0;
+                                        setScannedLogs(updated);
+                                      }}
+                                      className="border border-border bg-bg/50 px-2.5 py-1.5 rounded-lg outline-none text-ink font-semibold focus:border-primary"
+                                    />
+                                  </div>
+                                  <div className="flex flex-col gap-0.5">
+                                    <label className="text-[9px] font-bold text-ink">Insulin Type</label>
+                                    <select
+                                      value={log.insulinType || "Glargine (Long Acting)"}
+                                      onChange={(e) => {
+                                        const updated = [...scannedLogs];
+                                        updated[idx].insulinType = e.target.value;
+                                        setScannedLogs(updated);
+                                      }}
+                                      className="border border-border bg-bg/50 px-2 py-1.5 rounded-lg outline-none text-ink cursor-pointer focus:border-primary text-[10px]"
+                                    >
+                                      <option value="Lispro (Meal Time)">Lispro (Meal Time)</option>
+                                      <option value="Glargine (Long Acting)">Glargine (Long Acting)</option>
+                                      <option value="Aspart (Rapid)">Aspart (Rapid)</option>
+                                      <option value="Detemir (Basal)">Detemir (Basal)</option>
+                                    </select>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Form Fields: Meal */}
+                              {log.type === "meal" && (
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                  <div className="flex flex-col gap-0.5">
+                                    <label className="text-[9px] font-bold text-ink">Carbs (grams)</label>
+                                    <input
+                                      type="number"
+                                      value={log.value}
+                                      onChange={(e) => {
+                                        const updated = [...scannedLogs];
+                                        updated[idx].value = parseFloat(e.target.value) || 0;
+                                        setScannedLogs(updated);
+                                      }}
+                                      className="border border-border bg-bg/50 px-2.5 py-1.5 rounded-lg outline-none text-ink font-semibold focus:border-primary"
+                                    />
+                                  </div>
+                                  <div className="flex flex-col gap-0.5">
+                                    <label className="text-[9px] font-bold text-ink">Meal Type</label>
+                                    <select
+                                      value={log.mealType || "Breakfast"}
+                                      onChange={(e) => {
+                                        const updated = [...scannedLogs];
+                                        updated[idx].mealType = e.target.value;
+                                        setScannedLogs(updated);
+                                      }}
+                                      className="border border-border bg-bg/50 px-2 py-1.5 rounded-lg outline-none text-ink cursor-pointer focus:border-primary"
+                                    >
+                                      <option value="Breakfast">Breakfast</option>
+                                      <option value="Lunch">Lunch</option>
+                                      <option value="Dinner">Dinner</option>
+                                      <option value="Snack">Snack</option>
+                                    </select>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Time Override */}
+                              <div className="flex flex-col gap-0.5 text-xs">
+                                <label className="text-[9px] font-bold text-ink flex items-center gap-1">
+                                  <Calendar size={10} className="text-primary" /> Logged Date & Time
+                                </label>
+                                <input
+                                  type="datetime-local"
+                                  value={log.loggedAt ? new Date(new Date(log.loggedAt).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ""}
+                                  onChange={(e) => {
+                                    const updated = [...scannedLogs];
+                                    updated[idx].loggedAt = e.target.value ? new Date(e.target.value).toISOString() : null;
+                                    setScannedLogs(updated);
+                                  }}
+                                  className="border border-border bg-bg/50 px-2.5 py-1.5 rounded-lg outline-none text-ink cursor-pointer focus:border-primary font-body"
+                                />
+                              </div>
+
+                              {/* Notes for Meals */}
+                              {log.type === "meal" && (
+                                <div className="flex flex-col gap-0.5 text-xs">
+                                  <label className="text-[9px] font-bold text-ink">Meal notes</label>
+                                  <input
+                                    type="text"
+                                    value={log.notes || ""}
+                                    onChange={(e) => {
+                                      const updated = [...scannedLogs];
+                                      updated[idx].notes = e.target.value;
+                                      setScannedLogs(updated);
+                                    }}
+                                    placeholder="e.g. 2 Roti and mixed veg"
+                                    className="border border-border bg-bg/50 px-2.5 py-1.5 rounded-lg outline-none text-ink focus:border-primary"
+                                  />
+                                </div>
+                              )}
+
+                            </div>
+                          ))}
+
+                          {/* Add manual logs inline */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const nowStr = new Date().toISOString();
+                              setScannedLogs([
+                                ...scannedLogs,
+                                {
+                                  type: "glucose",
+                                  value: 110,
+                                  context: "Fasting",
+                                  selected: true,
+                                  loggedAt: nowStr
+                                }
+                              ]);
+                            }}
+                            className="w-full border border-dashed border-border/80 hover:border-primary/40 text-[10px] py-2 rounded-xl text-muted font-extrabold hover:text-primary transition-all flex items-center justify-center gap-1 bg-surface cursor-pointer"
+                          >
+                            <Plus size={11} /> Add Log Entry Row
+                          </button>
+                        </div>
+
+                        {/* Footer Submits */}
+                        <div className="flex gap-2 pt-3 border-t border-border/60 mt-3.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setScannedLogs([]);
+                              setAiFile(null);
+                              setIsManualGrid(false);
+                            }}
+                            className="flex-1 py-2 bg-surface hover:bg-bg border border-border rounded-lg text-muted font-body text-xs font-semibold cursor-pointer"
+                          >
+                            Clear
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleSaveExtractedLogs}
+                            disabled={submitting || scannedLogs.filter(l => l.selected).length === 0}
+                            className="flex-1 py-2 bg-primary hover:bg-primary/95 text-white rounded-lg font-body text-xs font-semibold shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                          >
+                            {submitting ? (
+                              <Loader2 size={12} className="animate-spin" />
+                            ) : (
+                              "Log to Diary"
+                            )}
+                          </button>
+                        </div>
+
+                      </div>
+                    </div>
+                  )}
+
                 </div>
-              </form>
+              )}
             </motion.div>
           </div>
         )}
