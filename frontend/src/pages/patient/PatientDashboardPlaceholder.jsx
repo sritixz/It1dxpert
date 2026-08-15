@@ -227,10 +227,10 @@ export function PatientDashboardPlaceholder() {
   };
 
   // Compute log completion checklist
-  const hasGlucose = dailyLog?.glucose?.length > 0;
-  const hasInsulin = dailyLog?.insulin?.length > 0;
-  const hasMeals = dailyLog?.meals?.length > 0;
-  const hasActivity = dailyLog?.activity?.length > 0;
+  const hasGlucose = dailyLog?.glucose?.length >= 4;
+  const hasInsulin = dailyLog?.insulin?.length >= 4;
+  const hasMeals = dailyLog?.meals?.length >= 4;
+  const hasActivity = dailyLog?.activity?.length >= 4;
 
   const checklist = [
     { id: "glucose", name: "Glucose Reading", status: hasGlucose, count: dailyLog?.glucose?.length || 0, icon: Droplet, color: "text-primary bg-primary-light" },
@@ -239,8 +239,13 @@ export function PatientDashboardPlaceholder() {
     { id: "activity", name: "Physical Activity", status: hasActivity, count: dailyLog?.activity?.length || 0, icon: Footprints, color: "text-success bg-success-light" }
   ];
 
+  const totalLogs = Math.min(4, dailyLog?.glucose?.length || 0) +
+                    Math.min(4, dailyLog?.insulin?.length || 0) +
+                    Math.min(4, dailyLog?.meals?.length || 0) +
+                    Math.min(4, dailyLog?.activity?.length || 0);
+
+  const progressPercent = Math.round((totalLogs / 16) * 100);
   const loggedCount = checklist.filter((item) => item.status).length;
-  const progressPercent = loggedCount * 25;
 
   // Format today's display date
   const displayDateStr = new Date().toLocaleDateString("en-US", {
@@ -412,11 +417,9 @@ export function PatientDashboardPlaceholder() {
                       <span className="font-body text-[11px] font-semibold text-ink text-center">
                         {item.name}
                       </span>
-                      {item.status && (
-                        <span className="text-[10px] text-muted font-medium mt-0.5">
-                          {item.count} {item.count === 1 ? 'log' : 'logs'} today
-                        </span>
-                      )}
+                      <span className="text-[10px] text-muted font-medium mt-0.5">
+                        {item.count} / 4 logged
+                      </span>
                       <div className="mt-2 flex items-center justify-center">
                         {item.status ? (
                           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-success text-white">
