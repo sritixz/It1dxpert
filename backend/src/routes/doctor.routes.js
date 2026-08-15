@@ -20,6 +20,7 @@ import {
   listPatientDocumentsController,
   doctorUploadPrescriptionController,
   doctorDeleteDocumentController,
+  getPatient7DayReportForDoctorController,
 } from "../controllers/doctor.controller.js";
 import { upload } from "../middleware/upload.js";
 
@@ -35,6 +36,7 @@ router.get("/patients/:patientId/appointment-records", asyncHandler(getPatientAp
 router.get("/patients/:patientId/documents", asyncHandler(listPatientDocumentsController));
 router.post("/patients/:patientId/documents", upload.single("file"), asyncHandler(doctorUploadPrescriptionController));
 router.delete("/patients/:patientId/documents/:docId", asyncHandler(doctorDeleteDocumentController));
+router.get("/patients/:patientId/report/last-7-days", asyncHandler(getPatient7DayReportForDoctorController));
 router.get("/alerts", asyncHandler(listAlertsController));
 router.patch("/alerts/:alertId/read", asyncHandler(markAlertReadController));
 router.patch("/alerts/:alertId/resolve", asyncHandler(resolveAlertController));

@@ -28,6 +28,7 @@ import {
   logDoseController,
   getAdherenceController,
   getGamificationStatusController,
+  getPatient7DayReportController,
 } from "../controllers/patient.controller.js";
 
 const router = Router();
@@ -65,5 +66,8 @@ router.get("/medications/adherence", asyncHandler(getAdherenceController));
 
 // Gamification — streak + earned badges, for whatever UI surfaces them
 router.get("/gamification", asyncHandler(getGamificationStatusController));
+
+// 7-day Health status & logs PDF report endpoint
+router.get("/report/last-7-days", asyncHandler(getPatient7DayReportController));
 
 export default router;

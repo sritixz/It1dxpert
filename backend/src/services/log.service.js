@@ -393,3 +393,51 @@ function stdDev(arr) {
 function round(n) {
   return Math.round(n * 10) / 10;
 }
+
+export async function getPatient7DayReportData(patientId) {
+  const since = new Date();
+  since.setDate(since.getDate() - 7);
+  since.setHours(0, 0, 0, 0);
+
+  const [patient, glucose, insulin, meals, activity, notes, glucoseTrends] = await Promise.all([
+    prisma.patientProfile.findUnique({
+      where: { id: patientId },
+      include: {
+        user: { select: { email: true, phone: true } },
+        hospital: { select: { name: true } },
+        doctor: { select: { fullName: true } },
+      },
+    }),
+    prisma.glucoseLog.findMany({ where: { patientId, loggedAt: { gte: since } }, orderBy: { loggedAt: "asc" } }),
+    prisma.insulinLog.findMany({ where: { patientId, loggedAt: { gte: since } }, orderBy: { loggedAt: "asc" } }),
+    prisma.mealLog.findMany({ where: { patientId, loggedAt: { gte: since } }, orderBy: { loggedAt: "asc" } }),
+    prisma.activityLog.findMany({ where: { patientId, loggedAt: { gte: since } }, orderBy: { loggedAt: "asc" } }),
+    prisma.patientNote.findMany({ where: { patientId, loggedAt: { gte: since } }, orderBy: { loggedAt: "asc" } }),
+    getGlucoseTrends(patientId, 7),
+  ]);
+
+  if (!patient) {
+    throw new Error("Patient profile not found");
+  }
+
+  return {
+    patient: {
+      fullName: patient.fullName,
+      email: patient.user?.email || "",
+      phone: patient.user?.phone || "",
+      hospitalName: patient.hospital?.name || "",
+      doctorName: patient.doctor?.fullName || "",
+      diabetesType: patient.diabetesType || "",
+      gender: patient.gender || "",
+      dateOfBirth: patient.dateOfBirth ? patient.dateOfBirth.toISOString().slice(0, 10) : "",
+    },
+    trends: glucoseTrends,
+    logs: {
+      glucose,
+      insulin,
+      meals,
+      activity,
+      notes,
+    },
+  };
+}

@@ -169,3 +169,8 @@ export async function getGamificationStatusController(req, res) {
     },
   });
 }
+
+export async function getPatient7DayReportController(req, res) {
+  const data = await logService.getPatient7DayReportData(req.patientProfileId);
+  res.json({ success: true, data });
+}

@@ -113,3 +113,12 @@ export async function doctorDeleteDocumentController(req, res) {
   await documentService.deleteDoctorDocument(docId, req.hospitalId);
   res.json({ success: true, message: "Document deleted successfully." });
 }
+
+export async function getPatient7DayReportForDoctorController(req, res) {
+  const { patientId } = req.params;
+  const data = await doctorService.getPatient7DayReportData(patientId, {
+    hospitalId: req.hospitalId,
+    doctorProfileId: req.doctorProfileId,
+  });
+  res.json({ success: true, data });
+}

@@ -9,7 +9,7 @@
 
 import { prisma } from "../config/db.js";
 import { AppError } from "../utils/AppError.js";
-import { getGlucoseTrends, getPatientTimeline as getTimelineForPatient } from "./log.service.js";
+import { getGlucoseTrends, getPatientTimeline as getTimelineForPatient, getPatient7DayReportData as getReportData } from "./log.service.js";
 import { DEFAULT_THRESHOLDS } from "./alert.service.js";
 
 // A patient with no glucose reading in this many days is considered
@@ -280,4 +280,9 @@ export async function getPatientAppointmentRecords(patientId, { hospitalId, doct
     },
     orderBy: { scheduledAt: "desc" }
   });
+}
+
+export async function getPatient7DayReportData(patientId, { hospitalId, doctorProfileId }) {
+  await assertDoctorCanAccessPatient(patientId, { hospitalId, doctorProfileId });
+  return getReportData(patientId);
 }
