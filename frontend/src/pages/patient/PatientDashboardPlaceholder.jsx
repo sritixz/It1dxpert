@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { 
   Droplet, Syringe, UtensilsCrossed, Footprints, Flame, Award, 
-  Plus, Check, X, Loader2, ChevronRight, AlertCircle, Sparkles, Upload, Calendar
+  Plus, Check, X, Loader2, ChevronRight, AlertCircle, Sparkles, Upload, Calendar, FileText
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card } from "../../components/ui/Card.jsx";
@@ -12,9 +12,11 @@ import {
   logMeal, 
   logInsulin, 
   logActivity,
-  fetchGamificationStatus 
+  fetchGamificationStatus,
+  fetchPatient7DayReport
 } from "../../api/patient.api.js";
 import { extractLogsFromDocument } from "../../api/ai.api.js";
+import { exportReportToPdf } from "../../utils/pdfExport.js";
 
 export function PatientDashboardPlaceholder() {
   const { user } = useAuth();
@@ -35,6 +37,20 @@ export function PatientDashboardPlaceholder() {
   const [isScanning, setIsScanning] = useState(false);
   const [scannedLogs, setScannedLogs] = useState([]);
   const [isManualGrid, setIsManualGrid] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportPdf = async () => {
+    setIsExporting(true);
+    try {
+      const data = await fetchPatient7DayReport();
+      exportReportToPdf(data);
+    } catch (err) {
+      console.error("Failed to export PDF:", err);
+      alert("Failed to generate PDF report. Please try again.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   // Form states
   const [glucoseValue, setGlucoseValue] = useState("");
@@ -331,6 +347,18 @@ export function PatientDashboardPlaceholder() {
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white font-body text-xs font-semibold transition-all shadow-sm border border-indigo-100/50 cursor-pointer"
           >
             <Sparkles size={14} className="animate-pulse" /> AI Document Scan
+          </button>
+          <button 
+            onClick={handleExportPdf}
+            disabled={isExporting}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-teal-50 text-teal-600 hover:bg-teal-600 hover:text-white font-body text-xs font-semibold transition-all shadow-sm border border-teal-100/50 cursor-pointer disabled:opacity-50"
+          >
+            {isExporting ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <FileText size={14} />
+            )}
+            {isExporting ? "Generating..." : "Export 7-Day PDF"}
           </button>
         </div>
       </div>

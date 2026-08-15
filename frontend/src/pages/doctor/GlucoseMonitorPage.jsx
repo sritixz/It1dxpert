@@ -15,12 +15,19 @@ import {
   Tooltip, ReferenceArea, ReferenceLine,
 } from "recharts";
 import { Card } from "../../components/ui/Card.jsx";
-import { fetchPatientOverview, fetchPatientGlucoseTrends, fetchPatientTimeline, fetchPatientAppointmentRecords } from "../../api/doctor.api.js";
+import { 
+  fetchPatientOverview, 
+  fetchPatientGlucoseTrends, 
+  fetchPatientTimeline, 
+  fetchPatientAppointmentRecords,
+  fetchPatient7DayReportForDoctor
+} from "../../api/doctor.api.js";
 import { 
   fetchPatientDocumentsForDoctor, 
   uploadPrescriptionForPatient, 
   deletePatientDocumentForDoctor 
 } from "../../api/document.api.js";
+import { exportReportToPdf } from "../../utils/pdfExport.js";
 import { ClinicalRecordModal } from "./AppointmentsPage.jsx";
 import { formatTime, formatRelativeTime } from "../../utils/format.js";
 
@@ -47,6 +54,20 @@ export function GlucoseMonitorPage() {
   const [timeline, setTimeline] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportPdf = async () => {
+    setIsExporting(true);
+    try {
+      const data = await fetchPatient7DayReportForDoctor(patientId);
+      exportReportToPdf(data);
+    } catch (err) {
+      console.error("Failed to export PDF:", err);
+      alert("Failed to generate PDF report. Please try again.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const [apptRecords, setApptRecords] = useState([]);
   const [selectedAptId, setSelectedAptId] = useState(null);
@@ -147,14 +168,30 @@ export function GlucoseMonitorPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <Link to="/doctor/patients" className="mb-1 inline-flex items-center gap-1 font-body text-xs font-medium text-muted hover:text-ink">
             <ArrowLeft size={12} /> Back to patients
           </Link>
-          <h2 className="font-display text-xl font-bold text-ink">
-            {overview?.patient?.fullName || "Glucose Monitor"}
-          </h2>
+          <div className="flex items-center gap-3">
+            <h2 className="font-display text-xl font-bold text-ink">
+              {overview?.patient?.fullName || "Glucose Monitor"}
+            </h2>
+            {overview && (
+              <button 
+                onClick={handleExportPdf}
+                disabled={isExporting}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-teal-50 text-teal-600 hover:bg-teal-600 hover:text-white font-body text-xs font-semibold border border-teal-100/50 shadow-xs cursor-pointer transition-all disabled:opacity-50"
+              >
+                {isExporting ? (
+                  <Loader2 size={12} className="animate-spin" />
+                ) : (
+                  <FileText size={12} />
+                )}
+                {isExporting ? "Generating..." : "Export 7-Day Report (PDF)"}
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="flex gap-1.5 rounded-lg border border-border bg-surface p-1">
