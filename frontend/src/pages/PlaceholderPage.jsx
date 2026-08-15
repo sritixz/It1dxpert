@@ -204,20 +204,30 @@ function DailyLogPlaceholder() {
 
   const totalEntries = timelineItems.length;
   
-  const hasGlucose = logs.glucose.length > 0;
-  const hasInsulin = logs.insulin.length > 0;
-  const hasMeals = logs.meals.length > 0;
-  const hasActivity = logs.activity.length > 0;
+  const glucoseCount = logs.glucose.length;
+  const insulinCount = logs.insulin.length;
+  const mealsCount = logs.meals.length;
+  const activityCount = logs.activity.length;
+
+  const hasGlucose = glucoseCount >= 4;
+  const hasInsulin = insulinCount >= 4;
+  const hasMeals = mealsCount >= 4;
+  const hasActivity = activityCount >= 4;
 
   const categories = [
-    { name: "Glucose Reading", status: hasGlucose },
-    { name: "Insulin Dose", status: hasInsulin },
-    { name: "Carbs / Meal", status: hasMeals },
-    { name: "Activity", status: hasActivity },
+    { name: "Glucose Reading", status: hasGlucose, count: glucoseCount },
+    { name: "Insulin Dose", status: hasInsulin, count: insulinCount },
+    { name: "Carbs / Meal", status: hasMeals, count: mealsCount },
+    { name: "Activity", status: hasActivity, count: activityCount },
   ];
 
+  const totalLogs = Math.min(4, glucoseCount) +
+                    Math.min(4, insulinCount) +
+                    Math.min(4, mealsCount) +
+                    Math.min(4, activityCount);
+
+  const progressPercent = Math.round((totalLogs / 16) * 100);
   const loggedCount = categories.filter((c) => c.status).length;
-  const progressPercent = loggedCount * 25;
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -272,7 +282,7 @@ function DailyLogPlaceholder() {
                   }`}
                 >
                   <span className={`h-1.5 w-1.5 rounded-full ${c.status ? "bg-green-500 animate-pulse" : "bg-muted"}`} />
-                  {c.name}
+                  {c.name} ({c.count}/4)
                 </span>
               ))}
             </div>
