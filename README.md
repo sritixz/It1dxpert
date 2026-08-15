@@ -63,7 +63,7 @@ Powered by the **Gemini 3.5 Flash** model, CareAI provides three integrated feat
 ### 3. Doctor Portal & Clinical Oversight
 *   **Patient List Directory:** Complete roster of assigned patients with summaries of their diabetes profiles, average glucose readings, and last active timestamps.
 *   **Interactive Glucose Monitor:** A detailed dashboard showing glucose trends over a target-range band (70 - 180 mg/dL) alongside a chronological event timeline containing glucose logs, insulin doses, meal details, activity sessions, and patient notes.
-*   **Clinical Vital Sheets:** Log clinical parameters during patient appointments, including weight (kg), height (cm), blood pressure (mmHg), pulse (bpm), temperature (°C), blood glucose, clinician notes, and prescriptions.
+*   **Clinical Vitals Sheets:** Log clinical parameters during patient appointments, including weight (kg), height (cm), blood pressure (mmHg), pulse (bpm), temperature (°C), blood glucose, clinician notes, and prescriptions.
 *   **Rule-Based Alerts Queue:** Generates automated alerts (e.g., `HIGH_GLUCOSE`, `LOW_GLUCOSE`, `MISSED_LOG`) with configurable severe thresholds per doctor. Allows marking alerts as Read or Resolved.
 
 ### 4. Admin Management Dashboard
@@ -138,7 +138,7 @@ It1dxpert/
 *   PostgreSQL Database instance
 *   Google Gemini API Key (Optional; system falls back to mock clinical data diagnostics if omitted)
 
-### Step 2: Backend Setup
+### Step 1: Backend Setup
 1. Open a terminal and navigate to the `/backend` folder.
 2. Copy the environment variables:
    ```bash
@@ -171,7 +171,7 @@ It1dxpert/
    npm run dev
    ```
 
-### Step 3: Frontend Setup
+### Step 2: Frontend Setup
 1. Open a separate terminal and navigate to the `/frontend` folder.
 2. Copy the environment variables:
    ```bash
