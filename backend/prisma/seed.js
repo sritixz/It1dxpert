@@ -184,7 +184,7 @@ async function main() {
     { code: "STREAK_3", name: "3-Day Streak", description: "Logged daily activities for 3 consecutive days", icon: "🔥" },
     { code: "STREAK_7", name: "7-Day Streak", description: "Logged daily activities for 7 consecutive days", icon: "🏆" },
     { code: "STREAK_30", name: "30-Day Streak", description: "Logged daily activities for 30 consecutive days", icon: "👑" },
-    { code: "COMPLETE_DAY", name: "Full Log Hero", description: "Logged glucose, meals, insulin, and activity in a single day", icon: "🌟" },
+    { code: "COMPLETE_DAY", name: "Full Log Hero", description: "Logged glucose, meals, insulin, and activity 4 times each in a single day", icon: "🌟" },
   ];
 
   const badgeIdsByCode = {};

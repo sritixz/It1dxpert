@@ -81,7 +81,7 @@ export async function checkAndAwardBadges(patientId) {
 }
 
 // "Completeness" badge — the one that specifically rewards data QUALITY
-// (all four categories logged the same day) rather than sheer count of
+// (all four categories logged 4 times on the same day) rather than sheer count of
 // entries, per the design note we agreed on.
 async function loggedAllCategoriesToday(patientId) {
   const { start, end } = todayBounds();
@@ -91,7 +91,7 @@ async function loggedAllCategoriesToday(patientId) {
     prisma.mealLog.count({ where: { patientId, loggedAt: { gte: start, lt: end } } }),
     prisma.activityLog.count({ where: { patientId, loggedAt: { gte: start, lt: end } } }),
   ]);
-  return glucose > 0 && insulin > 0 && meal > 0 && activity > 0;
+  return glucose >= 4 && insulin >= 4 && meal >= 4 && activity >= 4;
 }
 
 async function awardBadgeIfNotAlready(patientId, code) {
