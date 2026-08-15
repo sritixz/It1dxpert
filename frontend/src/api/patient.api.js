@@ -124,3 +124,8 @@ export async function exportPatientData() {
   return response.data;
 }
 
+export async function fetchPatient7DayReport() {
+  const { data } = await apiClient.get("/patient/report/last-7-days");
+  return data.data;
+}
+

@@ -118,3 +118,8 @@ export async function updateAlertPreferences(payload) {
   const { data } = await apiClient.patch("/doctor/settings/alert-preferences", payload);
   return data.data;
 }
+
+export async function fetchPatient7DayReportForDoctor(patientId) {
+  const { data } = await apiClient.get(`/doctor/patients/${patientId}/report/last-7-days`);
+  return data.data;
+}
