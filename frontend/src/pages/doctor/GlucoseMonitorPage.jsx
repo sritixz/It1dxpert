@@ -29,7 +29,7 @@ import {
 } from "../../api/document.api.js";
 import { exportReportToPdf } from "../../utils/pdfExport.js";
 import { ClinicalRecordModal } from "./AppointmentsPage.jsx";
-import { formatTime, formatRelativeTime } from "../../utils/format.js";
+import { formatDateTime, formatRelativeTime } from "../../utils/format.js";
 
 const RANGE_OPTIONS = [
   { days: 7, label: "7D" },
@@ -163,7 +163,7 @@ export function GlucoseMonitorPage() {
 
   const chartData = trends?.series.map((point) => ({
     ...point,
-    label: formatTime(point.loggedAt),
+    label: formatDateTime(point.loggedAt),
   }));
 
   return (

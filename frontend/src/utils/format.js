@@ -27,3 +27,13 @@ export function calculateAge(dateOfBirth) {
 export function formatTime(dateString) {
   return new Date(dateString).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
+
+export function formatDateTime(dateString) {
+  if (!dateString) return "";
+  return new Date(dateString).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}

@@ -5,9 +5,13 @@ import {
   Users, Bell, User, Building2, ShieldCheck, Plus, Check, ChevronRight, AlertTriangle,
   Syringe, Activity, Calendar, Clock
 } from "lucide-react";
+import {
+  ResponsiveContainer, ComposedChart, Line, XAxis, YAxis, CartesianGrid,
+  Tooltip, ReferenceArea, ReferenceLine
+} from "recharts";
 import { Card } from "../components/ui/Card.jsx";
-import { fetchDailyLog, logGlucose, logMeal, logInsulin } from "../api/patient.api.js";
-import { formatTime } from "../utils/format.js";
+import { fetchDailyLog, logGlucose, logMeal, logInsulin, fetchGlucoseTrends } from "../api/patient.api.js";
+import { formatTime, formatDateTime } from "../utils/format.js";
 
 export function PlaceholderPage() {
   const location = useLocation();
@@ -538,68 +542,137 @@ function DailyLogPlaceholder() {
 
 // 2. Glucose Trends
 function GlucoseTrendsPlaceholder() {
+  const [days, setDays] = useState(7);
+  const [trends, setTrends] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+    setError("");
+
+    fetchGlucoseTrends(days)
+      .then((data) => {
+        if (!cancelled) setTrends(data);
+      })
+      .catch((err) => {
+        if (!cancelled) setError("Failed to load glucose trends.");
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [days]);
+
+  const chartData = trends?.series.map((point) => ({
+    ...point,
+    label: formatDateTime(point.loggedAt),
+  }));
+
+  const RANGE_OPTIONS = [
+    { days: 7, label: "7D" },
+    { days: 14, label: "14D" },
+    { days: 30, label: "30D" },
+    { days: 90, label: "90D" },
+  ];
+
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card>
-          <p className="text-xs font-semibold text-muted uppercase">Time in Range</p>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="font-display text-3xl font-extrabold text-green-600">82%</span>
-            <span className="text-xs text-muted">Target (70-180 mg/dL)</span>
-          </div>
-        </Card>
-        <Card>
-          <p className="text-xs font-semibold text-muted uppercase">Average Glucose</p>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="font-display text-3xl font-extrabold text-ink">114 mg/dL</span>
-            <span className="text-xs text-muted">Last 7 days</span>
-          </div>
-        </Card>
-        <Card>
-          <p className="text-xs font-semibold text-muted uppercase">Est. HbA1c</p>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="font-display text-3xl font-extrabold text-primary">5.6%</span>
-            <span className="text-xs text-muted">Excellent Control</span>
-          </div>
-        </Card>
+      <div className="flex items-center justify-between">
+        <h3 className="font-display text-base font-bold text-ink">Glucose Trends</h3>
+        <div className="flex gap-1.5 rounded-lg border border-border bg-surface p-1">
+          {RANGE_OPTIONS.map((opt) => (
+            <button
+              key={opt.days}
+              onClick={() => setDays(opt.days)}
+              className={`rounded-md px-3 py-1 font-body text-xs font-semibold transition-colors ${
+                days === opt.days ? "bg-primary text-white" : "text-muted hover:bg-bg"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <Card>
-        <div className="flex items-center justify-between border-b border-border pb-4">
-          <h3 className="font-display text-base font-bold text-ink">Glucose Chart (24-Hour Trend)</h3>
-          <div className="flex gap-2">
-            <span className="h-3 w-3 rounded-full bg-green-500 inline-block self-center"></span>
-            <span className="text-xs text-muted mr-4">Target Range</span>
-            <span className="h-3 w-3 rounded-full bg-primary inline-block self-center"></span>
-            <span className="text-xs text-muted">Actual Glucose</span>
+      {isLoading && !trends ? (
+        <Card>
+          <p className="font-body text-sm text-muted py-10 text-center">Loading glucose data…</p>
+        </Card>
+      ) : error ? (
+        <Card className="border-critical/30 bg-critical-light">
+          <p className="font-body text-sm text-critical py-4 text-center">{error}</p>
+        </Card>
+      ) : trends ? (
+        <>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <Card>
+              <p className="text-xs font-semibold text-muted uppercase">Time in Range</p>
+              <div className="mt-2 flex items-baseline gap-2">
+                <span className="font-display text-3xl font-extrabold text-green-600">{trends.insights.inRangePercent}%</span>
+                <span className="text-xs text-muted">Target (70-180 mg/dL)</span>
+              </div>
+            </Card>
+            <Card>
+              <p className="text-xs font-semibold text-muted uppercase">Average Glucose</p>
+              <div className="mt-2 flex items-baseline gap-2">
+                <span className="font-display text-3xl font-extrabold text-ink">
+                  {trends.stats.average ? `${trends.stats.average} mg/dL` : "—"}
+                </span>
+                <span className="text-xs text-muted">Last {days} days</span>
+              </div>
+            </Card>
+            <Card>
+              <p className="text-xs font-semibold text-muted uppercase">Est. HbA1c</p>
+              <div className="mt-2 flex items-baseline gap-2">
+                <span className="font-display text-3xl font-extrabold text-primary">
+                  {trends.insights.gmi ? `${trends.insights.gmi}%` : "—"}
+                </span>
+                <span className="text-xs text-muted">Excellent Control</span>
+              </div>
+            </Card>
           </div>
-        </div>
-        <div className="mt-6 flex h-64 w-full items-end justify-between relative bg-bg rounded-lg border border-border p-4">
-          {/* Target Range Band Overlay */}
-          <div className="absolute left-0 right-0 bottom-[25%] top-[25%] bg-green-50 opacity-40 border-y border-dashed border-green-200 pointer-events-none"></div>
 
-          {/* Dummy Trend SVG */}
-          <svg className="absolute inset-0 h-full w-full p-4" viewBox="0 0 100 100" preserveAspectRatio="none">
-            <path
-              d="M 0,60 Q 20,40 40,65 T 80,45 T 100,55"
-              fill="none"
-              stroke="#2B6CB0"
-              strokeWidth="2"
-            />
-            {/* Dots on line */}
-            <circle cx="0" cy="60" r="1.5" fill="#2B6CB0" />
-            <circle cx="25" cy="48" r="1.5" fill="#2B6CB0" />
-            <circle cx="50" cy="62" r="1.5" fill="#2B6CB0" />
-            <circle cx="75" cy="46" r="1.5" fill="#2B6CB0" />
-            <circle cx="100" cy="55" r="1.5" fill="#2B6CB0" />
-          </svg>
-
-          {/* Labels */}
-          <span className="absolute left-6 top-3 text-[10px] font-bold text-muted">180 mg/dL</span>
-          <span className="absolute left-6 bottom-3 text-[10px] font-bold text-muted">70 mg/dL</span>
-          <span className="absolute right-6 top-1/2 transform -translate-y-1/2 text-[10px] font-bold text-green-700">Target Zone</span>
-        </div>
-      </Card>
+          <Card>
+            <div className="flex items-center justify-between border-b border-border pb-4">
+              <h3 className="font-display text-base font-bold text-ink">Glucose Chart ({days}-Day Trend)</h3>
+              <div className="flex gap-2 text-xs">
+                <span className="h-3 w-3 rounded-full bg-green-500 inline-block self-center"></span>
+                <span className="text-muted mr-4">Target Range</span>
+                <span className="h-3 w-3 rounded-full bg-primary inline-block self-center"></span>
+                <span className="text-muted">Actual Glucose</span>
+              </div>
+            </div>
+            <div className="mt-6">
+              {chartData?.length ? (
+                <ResponsiveContainer width="100%" height={280}>
+                  <ComposedChart data={chartData} margin={{ left: -16, right: 8 }}>
+                    <CartesianGrid stroke="#E2E8F0" strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#5B6B82" }} minTickGap={24} />
+                    <YAxis domain={[0, 300]} tick={{ fontSize: 11, fill: "#5B6B82" }} />
+                    <Tooltip
+                      formatter={(value) => [`${value} mg/dL`, "Glucose"]}
+                      contentStyle={{ borderRadius: 8, borderColor: "#E2E8F0", fontSize: 12 }}
+                    />
+                    <ReferenceArea y1={70} y2={180} fill="#2F9E6E" fillOpacity={0.08} />
+                    <ReferenceLine y={180} stroke="#C4432E" strokeDasharray="4 4" />
+                    <ReferenceLine y={70} stroke="#C2831F" strokeDasharray="4 4" />
+                    <Line type="monotone" dataKey="value" stroke="#2B6CB0" strokeWidth={2} dot={false} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              ) : (
+                <p className="py-10 text-center font-body text-sm text-muted">
+                  No glucose readings logged in this period yet.
+                </p>
+              )}
+            </div>
+          </Card>
+        </>
+      ) : null}
     </div>
   );
 }

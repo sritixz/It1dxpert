@@ -128,4 +128,7 @@ export async function fetchPatient7DayReport() {
   const { data } = await apiClient.get("/patient/report/last-7-days");
   return data.data;
 }
-
+export async function fetchGlucoseTrends(days = 7) {
+  const { data } = await apiClient.get("/patient/glucose-trends", { params: { days } });
+  return data.data;
+}
