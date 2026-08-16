@@ -189,18 +189,36 @@ function StatCard({ label, value, unit, isText }) {
 }
 
 function InsulinFormModal({ existing, onClose, onSaved }) {
+  const STANDARD_INSULINS = [
+    "Lispro (Meal Time)",
+    "Basalog (Long-Acting)",
+    "Tresba (Long-Acting)",
+    "Huminsulin (Long-Acting)",
+    "Basugine (Meal Time)",
+    "Glargine (Long-Acting)"
+  ];
+
+  const isStandard = !existing?.insulinType || STANDARD_INSULINS.includes(existing.insulinType);
+  const initialInsulinType = isStandard 
+    ? (existing?.insulinType || "Lispro (Meal Time)") 
+    : (existing.insulinType.toLowerCase().includes("metal") ? "Other Metals" : "Other Meds");
+
   const [form, setForm] = useState({
     units: existing?.units || "",
-    insulinType: existing?.insulinType || "Lispro (Meal Time)",
+    insulinType: initialInsulinType,
     reason: existing?.reason || "",
   });
+  const [customInsulinType, setCustomInsulinType] = useState(isStandard ? "" : existing.insulinType);
   const [isSaving, setIsSaving] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
     setIsSaving(true);
     try {
-      const payload = { ...form, units: Number(form.units) };
+      const finalInsulinType = (form.insulinType === "Other Metals" || form.insulinType === "Other Meds")
+        ? customInsulinType.trim() || form.insulinType
+        : form.insulinType;
+      const payload = { ...form, insulinType: finalInsulinType, units: Number(form.units) };
       if (existing) await updateInsulinLog(existing.id, payload);
       else await logInsulin(payload);
       onSaved();
@@ -222,8 +240,19 @@ function InsulinFormModal({ existing, onClose, onSaved }) {
             <option value="Huminsulin (Long-Acting)">Huminsulin (Long-Acting)</option>
             <option value="Basugine (Meal Time)">Basugine (Meal Time)</option>
             <option value="Glargine (Long-Acting)">Glargine (Long-Acting)</option>
+            <option value="Other Metals">Other Metals</option>
+            <option value="Other Meds">Other Meds</option>
           </select>
         </div>
+        {(form.insulinType === "Other Metals" || form.insulinType === "Other Meds") && (
+          <Input 
+            label="Custom Medicine Name" 
+            required 
+            value={customInsulinType} 
+            onChange={(e) => setCustomInsulinType(e.target.value)} 
+            placeholder="e.g. Gold Bhasma, Metformin" 
+          />
+        )}
         <Input label="Reason" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} placeholder="e.g. Breakfast, Basal" />
         <Button type="submit" isLoading={isSaving} className="mt-2 w-full">{existing ? "Save Changes" : "Add Record"}</Button>
       </form>

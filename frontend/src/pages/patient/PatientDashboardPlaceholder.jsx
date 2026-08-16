@@ -62,6 +62,7 @@ export function PatientDashboardPlaceholder() {
 
   const [insulinUnits, setInsulinUnits] = useState("");
   const [insulinType, setInsulinType] = useState("Lispro (Meal Time)");
+  const [customInsulinType, setCustomInsulinType] = useState("");
   const [insulinReason, setInsulinReason] = useState("Meal Bolus");
 
   const [activityMins, setActivityMins] = useState("");
@@ -118,6 +119,7 @@ export function PatientDashboardPlaceholder() {
     setIsScanning(false);
     setScannedLogs([]);
     setIsManualGrid(false);
+    setCustomInsulinType("");
   };
 
   const handleSubmit = async (e) => {
@@ -138,7 +140,10 @@ export function PatientDashboardPlaceholder() {
       } else if (activeLogType === "insulin") {
         const units = parseFloat(insulinUnits);
         if (isNaN(units) || units <= 0) throw new Error("Insulin units must be a positive number.");
-        await logInsulin({ units, insulinType, reason: insulinReason });
+        const finalInsulinType = (insulinType === "Other Metals" || insulinType === "Other Meds")
+          ? customInsulinType.trim() || insulinType
+          : insulinType;
+        await logInsulin({ units, insulinType: finalInsulinType, reason: insulinReason });
       } else if (activeLogType === "activity") {
         const duration = parseInt(activityMins);
         if (isNaN(duration) || duration <= 0) throw new Error("Activity duration must be a positive integer.");
@@ -213,9 +218,12 @@ export function PatientDashboardPlaceholder() {
             loggedAt: log.loggedAt || undefined
           });
         } else if (log.type === "insulin") {
+          const finalType = (log.insulinType === "Other Metals" || log.insulinType === "Other Meds")
+            ? (log.customInsulinType?.trim() || log.insulinType)
+            : (log.insulinType || "Glargine (Long Acting)");
           await logInsulin({
             units: log.value,
-            insulinType: log.insulinType || "Glargine (Long Acting)",
+            insulinType: finalType,
             reason: log.reason || "Meal Bolus",
             loggedAt: log.loggedAt || undefined
           });
@@ -738,8 +746,25 @@ export function PatientDashboardPlaceholder() {
                           <option value="Glargine (Long Acting)">Glargine (Long Acting)</option>
                           <option value="Aspart (Rapid)">Aspart (Rapid)</option>
                           <option value="Detemir (Basal)">Detemir (Basal)</option>
+                          <option value="Other Metals">Other Metals</option>
+                          <option value="Other Meds">Other Meds</option>
                         </select>
                       </div>
+                      {(insulinType === "Other Metals" || insulinType === "Other Meds") && (
+                        <div>
+                          <label className="block text-xs font-semibold text-ink mb-1">
+                            Custom Medicine Name
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={customInsulinType}
+                            onChange={(e) => setCustomInsulinType(e.target.value)}
+                            placeholder="e.g. Gold Bhasma, Metformin"
+                            className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-primary text-ink"
+                          />
+                        </div>
+                      )}
                       <div>
                         <label className="block text-xs font-semibold text-ink mb-1">
                           Reason
@@ -1051,38 +1076,62 @@ export function PatientDashboardPlaceholder() {
 
                               {/* Form Fields: Insulin */}
                               {log.type === "insulin" && (
-                                <div className="grid grid-cols-2 gap-2 text-xs">
-                                  <div className="flex flex-col gap-0.5">
-                                    <label className="text-[9px] font-bold text-ink">Insulin Units</label>
-                                    <input
-                                      type="number"
-                                      step="0.5"
-                                      value={log.value}
-                                      onChange={(e) => {
-                                        const updated = [...scannedLogs];
-                                        updated[idx].value = parseFloat(e.target.value) || 0;
-                                        setScannedLogs(updated);
-                                      }}
-                                      className="border border-border bg-bg/50 px-2.5 py-1.5 rounded-lg outline-none text-ink font-semibold focus:border-primary"
-                                    />
+                                <div className="flex flex-col gap-2">
+                                  <div className="grid grid-cols-2 gap-2 text-xs">
+                                    <div className="flex flex-col gap-0.5">
+                                      <label className="text-[9px] font-bold text-ink">Insulin Units</label>
+                                      <input
+                                        type="number"
+                                        step="0.5"
+                                        value={log.value}
+                                        onChange={(e) => {
+                                          const updated = [...scannedLogs];
+                                          updated[idx].value = parseFloat(e.target.value) || 0;
+                                          setScannedLogs(updated);
+                                        }}
+                                        className="border border-border bg-bg/50 px-2.5 py-1.5 rounded-lg outline-none text-ink font-semibold focus:border-primary"
+                                      />
+                                    </div>
+                                    <div className="flex flex-col gap-0.5">
+                                      <label className="text-[9px] font-bold text-ink">Insulin Type</label>
+                                      <select
+                                        value={log.insulinType || "Glargine (Long Acting)"}
+                                        onChange={(e) => {
+                                          const updated = [...scannedLogs];
+                                          updated[idx].insulinType = e.target.value;
+                                          if (e.target.value === "Other Metals" || e.target.value === "Other Meds") {
+                                            updated[idx].customInsulinType = "";
+                                          }
+                                          setScannedLogs(updated);
+                                        }}
+                                        className="border border-border bg-bg/50 px-2 py-1.5 rounded-lg outline-none text-ink cursor-pointer focus:border-primary text-[10px]"
+                                      >
+                                        <option value="Lispro (Meal Time)">Lispro (Meal Time)</option>
+                                        <option value="Glargine (Long Acting)">Glargine (Long Acting)</option>
+                                        <option value="Aspart (Rapid)">Aspart (Rapid)</option>
+                                        <option value="Detemir (Basal)">Detemir (Basal)</option>
+                                        <option value="Other Metals">Other Metals</option>
+                                        <option value="Other Meds">Other Meds</option>
+                                      </select>
+                                    </div>
                                   </div>
-                                  <div className="flex flex-col gap-0.5">
-                                    <label className="text-[9px] font-bold text-ink">Insulin Type</label>
-                                    <select
-                                      value={log.insulinType || "Glargine (Long Acting)"}
-                                      onChange={(e) => {
-                                        const updated = [...scannedLogs];
-                                        updated[idx].insulinType = e.target.value;
-                                        setScannedLogs(updated);
-                                      }}
-                                      className="border border-border bg-bg/50 px-2 py-1.5 rounded-lg outline-none text-ink cursor-pointer focus:border-primary text-[10px]"
-                                    >
-                                      <option value="Lispro (Meal Time)">Lispro (Meal Time)</option>
-                                      <option value="Glargine (Long Acting)">Glargine (Long Acting)</option>
-                                      <option value="Aspart (Rapid)">Aspart (Rapid)</option>
-                                      <option value="Detemir (Basal)">Detemir (Basal)</option>
-                                    </select>
-                                  </div>
+                                  {(log.insulinType === "Other Metals" || log.insulinType === "Other Meds") && (
+                                    <div className="flex flex-col gap-0.5 mt-1.5">
+                                      <label className="text-[9px] font-bold text-ink">Custom Medicine Name</label>
+                                      <input
+                                        type="text"
+                                        required
+                                        value={log.customInsulinType || ""}
+                                        onChange={(e) => {
+                                          const updated = [...scannedLogs];
+                                          updated[idx].customInsulinType = e.target.value;
+                                          setScannedLogs(updated);
+                                        }}
+                                        placeholder="e.g. Gold Bhasma, Metformin"
+                                        className="border border-border bg-bg/50 px-2.5 py-1.5 rounded-lg outline-none text-ink focus:border-primary text-xs"
+                                      />
+                                    </div>
+                                  )}
                                 </div>
                               )}
 

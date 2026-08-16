@@ -87,6 +87,7 @@ function DailyLogPlaceholder() {
 
   const [insulinUnits, setInsulinUnits] = useState("");
   const [insulinType, setInsulinType] = useState("Lispro (Meal Time)");
+  const [customInsulinType, setCustomInsulinType] = useState("");
   const [insulinReason, setInsulinReason] = useState("Meal Bolus");
 
   const loadDailyLog = async (date) => {
@@ -151,7 +152,10 @@ function DailyLogPlaceholder() {
         setIsSaving(false);
         return;
       }
-      promises.push(logInsulin({ units, insulinType: insulinType || undefined, reason: insulinReason || undefined }));
+      const finalInsulinType = (insulinType === "Other Metals" || insulinType === "Other Meds")
+        ? customInsulinType.trim() || insulinType
+        : insulinType;
+      promises.push(logInsulin({ units, insulinType: finalInsulinType || undefined, reason: insulinReason || undefined }));
     }
 
     if (promises.length === 0) {
@@ -171,6 +175,7 @@ function DailyLogPlaceholder() {
       setMealNotes("");
       setInsulinUnits("");
       setInsulinType("Lispro (Meal Time)");
+      setCustomInsulinType("");
       setInsulinReason("Meal Bolus");
       
       setSuccess("Entries saved successfully!");
@@ -482,8 +487,20 @@ function DailyLogPlaceholder() {
                   <option value="Huminsulin (Long-Acting)">Huminsulin (Long-Acting)</option>
                   <option value="Basugine (Meal Time)">Basugine (Meal Time)</option>
                   <option value="Glargine (Long-Acting)">Glargine (Long-Acting)</option>
+                  <option value="Other Metals">Other Metals</option>
+                  <option value="Other Meds">Other Meds</option>
                 </select>
               </div>
+              {(insulinType === "Other Metals" || insulinType === "Other Meds") && (
+                <input
+                  type="text"
+                  placeholder="Enter custom medicine/metal name"
+                  value={customInsulinType}
+                  onChange={(e) => setCustomInsulinType(e.target.value)}
+                  className="w-full rounded-lg border border-border bg-bg px-4 py-2 text-xs outline-none focus:border-primary text-ink mb-2"
+                  required
+                />
+              )}
               <select
                 value={insulinReason}
                 onChange={(e) => setInsulinReason(e.target.value)}
