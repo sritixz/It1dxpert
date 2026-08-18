@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import { GlucoseWave } from "../../assets/GlucoseWave.jsx";
 
 export function AuthLayout({ eyebrow, title, subtitle, children }) {
@@ -33,6 +35,13 @@ export function AuthLayout({ eyebrow, title, subtitle, children }) {
       {/* Form panel */}
       <div className="flex flex-1 items-center justify-center bg-bg px-6 py-12">
         <div className="w-full max-w-sm">
+          <Link
+            to="/"
+            className="group mb-8 inline-flex items-center gap-1.5 font-body text-xs font-semibold uppercase tracking-wider text-muted hover:text-ink transition-colors"
+          >
+            <ArrowLeft size={14} className="transition-transform group-hover:-translate-x-0.5" />
+            Back to landing
+          </Link>
           {eyebrow && (
             <p className="mb-2 font-body text-xs font-semibold uppercase tracking-wide text-primary">{eyebrow}</p>
           )}
