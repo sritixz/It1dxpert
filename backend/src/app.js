@@ -23,7 +23,11 @@ import { errorHandler } from "./middleware/errorHandler.js";
 export const app = express();
 
 // --- Global middleware ---
-app.use(helmet()); // sensible security headers by default
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+); // sensible security headers by default, allowing cross-origin image requests
 app.use(
   cors({
     origin: (process.env.CORS_ORIGINS || "").split(",").filter(Boolean),
