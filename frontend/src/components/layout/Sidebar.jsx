@@ -4,6 +4,7 @@ import {
   Users, Bell, User, Building2, ShieldCheck, Activity, Calendar, HelpCircle,
   Syringe, Footprints, Bot, Utensils, FolderOpen, TrendingUp,
 } from "lucide-react";
+import { useAuth } from "../../context/AuthContext.jsx";
 
 const ICONS = {
   home: Home,
@@ -28,9 +29,20 @@ const ICONS = {
 };
 
 export function Sidebar({ navItems }) {
+  const { user } = useAuth();
+
+  const isPatientWithDoctor = user?.role === "PATIENT" && user?.patientProfile?.assignedDoctorId;
+  const isDoctorWithPatients = user?.role === "DOCTOR" && user?.doctorProfile?.patients?.length > 0;
+
+  const showLogo = isPatientWithDoctor || isDoctorWithPatients;
+  const hospital = isPatientWithDoctor ? user?.patientProfile?.hospital : isDoctorWithPatients ? user?.doctorProfile?.hospital : null;
+
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+  const BASE_URL = API_BASE_URL.replace("/api", "");
+
   return (
     <aside className="flex h-screen w-64 flex-col border-r border-border bg-surface">
-      <div className="flex items-center gap-2 px-6 py-6">
+      <div className="flex items-center gap-2 px-6 py-6 border-b border-border/50">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-white">
           <Activity size={18} />
         </div>
@@ -40,7 +52,21 @@ export function Sidebar({ navItems }) {
         </div>
       </div>
 
-      <nav className="flex-1 space-y-0.5 px-3">
+      {showLogo && hospital?.logoUrl && (
+        <div className="mx-6 mt-4 mb-2 flex items-center gap-2.5 rounded-xl border border-border bg-bg/50 p-2.5">
+          <img
+            src={`${BASE_URL}${hospital.logoUrl}`}
+            alt="Hospital Logo"
+            className="h-10 w-10 rounded-lg object-contain bg-white p-1"
+          />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-semibold text-ink">{hospital.name}</p>
+            <p className="text-[10px] text-muted font-medium">Partner Hospital</p>
+          </div>
+        </div>
+      )}
+
+      <nav className="mt-4 flex-1 space-y-0.5 px-3">
         {navItems.map((item) => {
           const Icon = ICONS[item.icon] || Home;
           return (
