@@ -1,5 +1,6 @@
 import { z } from "zod";
 import * as adminService from "../services/admin.service.js";
+import { AppError } from "../utils/AppError.js";
 
 const createDoctorSchema = z.object({
   email: z.string().email(),
@@ -90,12 +91,29 @@ const updateHospitalSchema = z.object({
   contactEmail: z.string().email().optional().or(z.literal("")),
   contactPhone: z.string().optional(),
   isActive: z.boolean().optional(),
+  logoUrl: z.string().optional(),
 });
 
 export async function updateHospitalController(req, res) {
   const { hospitalId } = req.params;
   const data = updateHospitalSchema.parse(req.body);
   const hospital = await adminService.updateHospital(hospitalId, data);
+  res.json({ success: true, data: hospital });
+}
+
+export async function uploadHospitalLogoController(req, res) {
+  const { hospitalId } = req.params;
+  
+  if (req.auth.role !== "SUPER_ADMIN" && hospitalId !== req.hospitalId) {
+    throw new AppError("Forbidden: You can only upload logo for your own hospital", 403);
+  }
+  
+  if (!req.file) {
+    throw new AppError("No file was uploaded.", 400);
+  }
+  
+  const logoUrl = `/uploads/${req.file.filename}`;
+  const hospital = await adminService.updateHospitalLogo(hospitalId, logoUrl);
   res.json({ success: true, data: hospital });
 }
 

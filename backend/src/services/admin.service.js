@@ -110,10 +110,16 @@ export async function getHospitalDetail(hospitalId) {
 // SUPER_ADMIN only (enforced at the route level) — a HOSPITAL_ADMIN
 // shouldn't be able to rename their own hospital or change its contact
 // details unilaterally; that's platform-level administration.
-export async function updateHospital(hospitalId, { name, type, address, contactEmail, contactPhone, isActive }) {
+export async function updateHospital(hospitalId, { name, type, address, contactEmail, contactPhone, isActive, logoUrl }) {
   const hospital = await prisma.hospital.findUnique({ where: { id: hospitalId } });
   if (!hospital) throw new AppError("Hospital not found", 404);
-  return prisma.hospital.update({ where: { id: hospitalId }, data: { name, type, address, contactEmail, contactPhone, isActive } });
+  return prisma.hospital.update({ where: { id: hospitalId }, data: { name, type, address, contactEmail, contactPhone, isActive, logoUrl } });
+}
+
+export async function updateHospitalLogo(hospitalId, logoUrl) {
+  const hospital = await prisma.hospital.findUnique({ where: { id: hospitalId } });
+  if (!hospital) throw new AppError("Hospital not found", 404);
+  return prisma.hospital.update({ where: { id: hospitalId }, data: { logoUrl } });
 }
 
 // -----------------------------------------------------------------------

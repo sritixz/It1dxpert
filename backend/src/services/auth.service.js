@@ -110,12 +110,13 @@ async function issueTokens(user) {
       patientProfile: {
         include: {
           assignedDoctor: { select: { fullName: true, specialization: true } },
-          hospital: { select: { name: true } },
+          hospital: { select: { name: true, logoUrl: true } },
         }
       },
       doctorProfile: {
         include: {
-          hospital: { select: { name: true } },
+          hospital: { select: { name: true, logoUrl: true } },
+          patients: { select: { id: true } },
         }
       },
     }

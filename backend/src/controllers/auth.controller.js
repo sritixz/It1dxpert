@@ -83,6 +83,7 @@ export async function meController(req, res) {
           hospital: {
             select: {
               name: true,
+              logoUrl: true,
             }
           }
         }
@@ -92,6 +93,12 @@ export async function meController(req, res) {
           hospital: {
             select: {
               name: true,
+              logoUrl: true,
+            }
+          },
+          patients: {
+            select: {
+              id: true,
             }
           }
         }
