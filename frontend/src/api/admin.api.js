@@ -37,6 +37,17 @@ export async function updateHospital(hospitalId, payload) {
   return data.data;
 }
 
+export async function uploadHospitalLogo(hospitalId, file) {
+  const formData = new FormData();
+  formData.append("logo", file);
+  const { data } = await apiClient.patch(`/admin/hospitals/${hospitalId}/logo`, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+  return data.data;
+}
+
 // --- Users & Roles ---
 export async function fetchUsers({ role, status, search, page = 1, pageSize = 20 } = {}) {
   const { data } = await apiClient.get("/admin/users", { params: { role, status, search, page, pageSize } });

@@ -9,7 +9,10 @@ import { Button } from "../../components/ui/Button.jsx";
 import { Modal } from "../../components/ui/Modal.jsx";
 import { Input } from "../../components/ui/Input.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
-import { fetchHospitals, createHospital, updateHospital } from "../../api/admin.api.js";
+import { fetchHospitals, createHospital, updateHospital, uploadHospitalLogo } from "../../api/admin.api.js";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+const BASE_URL = API_BASE_URL.replace("/api", "");
 
 export function AdminHospitalsPage() {
   const { user } = useAuth();
@@ -44,8 +47,12 @@ export function AdminHospitalsPage() {
           {hospitals.map((h) => (
             <Card key={h.id}>
               <div className="mb-3 flex items-start justify-between">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-light text-primary">
-                  <Building2 size={18} />
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-light text-primary overflow-hidden border border-border">
+                  {h.logoUrl ? (
+                    <img src={`${BASE_URL}${h.logoUrl}`} alt={h.name} className="h-full w-full object-contain bg-white" />
+                  ) : (
+                    <Building2 size={18} />
+                  )}
                 </div>
                 {user?.role === "SUPER_ADMIN" && (
                   <button onClick={() => { setEditing(h); setShowModal(true); }} className="text-muted hover:text-primary">
@@ -93,16 +100,34 @@ function HospitalFormModal({ existing, onClose, onSaved }) {
     contactEmail: existing?.contactEmail || "",
     contactPhone: existing?.contactPhone || "",
   });
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState(existing?.logoUrl ? `${BASE_URL}${existing.logoUrl}` : "");
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
+
+  function handleLogoChange(e) {
+    const file = e.target.files?.[0];
+    if (file) {
+      setLogoFile(file);
+      setLogoPreview(URL.createObjectURL(file));
+    }
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
     setIsSaving(true);
     setError("");
     try {
-      if (existing) await updateHospital(existing.id, form);
-      else await createHospital(form);
+      let hospital;
+      if (existing) {
+        hospital = await updateHospital(existing.id, form);
+      } else {
+        hospital = await createHospital(form);
+      }
+
+      if (logoFile) {
+        await uploadHospitalLogo(hospital.id, logoFile);
+      }
       onSaved();
     } catch (err) {
       setError(err.response?.data?.message || "Couldn't save hospital.");
@@ -126,6 +151,26 @@ function HospitalFormModal({ existing, onClose, onSaved }) {
         <Input label="Address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
         <Input label="Contact Email" type="email" value={form.contactEmail} onChange={(e) => setForm({ ...form, contactEmail: e.target.value })} />
         <Input label="Contact Phone" value={form.contactPhone} onChange={(e) => setForm({ ...form, contactPhone: e.target.value })} />
+        
+        <div>
+          <label className="mb-1.5 block font-body text-sm font-medium text-ink">Hospital Logo</label>
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-border bg-bg overflow-hidden">
+              {logoPreview ? (
+                <img src={logoPreview} alt="Preview" className="h-full w-full object-contain" />
+              ) : (
+                <Building2 className="text-muted" size={20} />
+              )}
+            </div>
+            <input
+              type="file"
+              accept="image/png, image/jpeg, image/jpg"
+              onChange={handleLogoChange}
+              className="font-body text-xs text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-primary-light file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-primary file:hover:bg-primary-light/80"
+            />
+          </div>
+        </div>
+
         {error && <p className="font-body text-sm text-critical">{error}</p>}
         <Button type="submit" isLoading={isSaving} className="mt-2 w-full">{existing ? "Save Changes" : "Add Hospital"}</Button>
       </form>
