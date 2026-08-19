@@ -81,7 +81,16 @@ export function PatientDashboardPlaceholder() {
     return local.toISOString().slice(0, 10);
   };
 
+  const getTodayTimeStr = () => {
+    const d = new Date();
+    const hrs = String(d.getHours()).padStart(2, "0");
+    const mins = String(d.getMinutes()).padStart(2, "0");
+    return `${hrs}:${mins}`;
+  };
+
   const [logDate, setLogDate] = useState(getTodayDateStr());
+  const [logTimeMode, setLogTimeMode] = useState("current"); // 'current' | 'custom'
+  const [customLogTime, setCustomLogTime] = useState(getTodayTimeStr());
 
   const loadData = async () => {
     setIsLoading(true);
@@ -109,6 +118,8 @@ export function PatientDashboardPlaceholder() {
   const openLogModal = (type) => {
     setActiveLogType(type);
     setLogDate(getTodayDateStr());
+    setLogTimeMode("current");
+    setCustomLogTime(getTodayTimeStr());
     setSubmitError("");
     setSubmitSuccess("");
     setIsModalOpen(true);
@@ -123,6 +134,8 @@ export function PatientDashboardPlaceholder() {
     setInsulinUnits("");
     setActivityMins("");
     setLogDate(getTodayDateStr());
+    setLogTimeMode("current");
+    setCustomLogTime(getTodayTimeStr());
 
     // Reset AI Scanner values
     setAiFile(null);
@@ -139,9 +152,16 @@ export function PatientDashboardPlaceholder() {
     setSubmitSuccess("");
 
     try {
-      const d = new Date();
+      let finalDate;
       const [yr, mo, dy] = logDate.split("-").map(Number);
-      const loggedAt = new Date(yr, mo - 1, dy, d.getHours(), d.getMinutes(), d.getSeconds()).toISOString();
+      if (logTimeMode === "current") {
+        const d = new Date();
+        finalDate = new Date(yr, mo - 1, dy, d.getHours(), d.getMinutes(), d.getSeconds());
+      } else {
+        const [hrs, mins] = customLogTime.split(":").map(Number);
+        finalDate = new Date(yr, mo - 1, dy, hrs, mins, 0);
+      }
+      const loggedAt = finalDate.toISOString();
 
       if (activeLogType === "glucose") {
         const val = parseFloat(glucoseValue);
@@ -879,20 +899,73 @@ export function PatientDashboardPlaceholder() {
                     </div>
                   )}
 
-                  {/* Date Input */}
-                  <div>
-                    <label className="block text-xs font-semibold text-ink mb-1">
-                      Log Date
-                    </label>
-                    <input
-                      type="date"
-                      required
-                      max={getTodayDateStr()}
-                      value={logDate}
-                      onChange={(e) => setLogDate(e.target.value)}
-                      className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-primary text-ink"
-                    />
+                  {/* Date & Time Inputs */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Date Input */}
+                    <div>
+                      <label className="block text-xs font-semibold text-ink mb-1">
+                        Log Date
+                      </label>
+                      <input
+                        type="date"
+                        required
+                        max={getTodayDateStr()}
+                        value={logDate}
+                        onChange={(e) => setLogDate(e.target.value)}
+                        className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-primary text-ink"
+                      />
+                    </div>
+
+                    {/* Time Mode Selector */}
+                    <div>
+                      <label className="block text-xs font-semibold text-ink mb-1">
+                        Log Time
+                      </label>
+                      <div className="flex gap-1 p-0.5 bg-bg border border-border rounded-lg h-[38px] items-center">
+                        <button
+                          type="button"
+                          onClick={() => setLogTimeMode("current")}
+                          className={`flex-1 py-1 text-xs font-medium rounded-md transition-all cursor-pointer ${
+                            logTimeMode === "current"
+                              ? "bg-surface text-ink font-bold shadow-2xs border border-border/80"
+                              : "text-muted hover:text-ink"
+                          }`}
+                        >
+                          Current
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setLogTimeMode("custom")}
+                          className={`flex-1 py-1 text-xs font-medium rounded-md transition-all cursor-pointer ${
+                            logTimeMode === "custom"
+                              ? "bg-surface text-ink font-bold shadow-2xs border border-border/80"
+                              : "text-muted hover:text-ink"
+                          }`}
+                        >
+                          Custom
+                        </button>
+                      </div>
+                    </div>
                   </div>
+
+                  {/* Custom Time Input (Conditional) */}
+                  {logTimeMode === "custom" && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                    >
+                      <label className="block text-xs font-semibold text-ink mb-1">
+                        Select Time
+                      </label>
+                      <input
+                        type="time"
+                        required
+                        value={customLogTime}
+                        onChange={(e) => setCustomLogTime(e.target.value)}
+                        className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-primary text-ink"
+                      />
+                    </motion.div>
+                  )}
 
                   {/* Submit button */}
                   <div className="flex gap-2 pt-2">

@@ -9,9 +9,11 @@ import * as logService from "../services/log.service.js";
 import * as medicationService from "../services/medication.service.js";
 
 const glucoseSchema = z.object({ value: z.number().positive(), context: z.string().optional(), loggedAt: z.string().optional() });
+const glucoseUpdateSchema = glucoseSchema.partial();
 const insulinSchema = z.object({ units: z.number().positive(), insulinType: z.string().optional(), reason: z.string().optional(), loggedAt: z.string().optional() });
 const insulinUpdateSchema = insulinSchema.partial();
 const mealSchema = z.object({ carbs: z.number().nonnegative(), mealType: z.string().optional(), notes: z.string().optional(), loggedAt: z.string().optional() });
+const mealUpdateSchema = mealSchema.partial();
 const activitySchema = z.object({ durationMins: z.number().int().positive(), activityType: z.string().optional(), loggedAt: z.string().optional() });
 const activityUpdateSchema = activitySchema.partial();
 const noteSchema = z.object({ content: z.string().min(1).max(1000) });
@@ -63,6 +65,17 @@ export async function deleteInsulinLogController(req, res) {
   res.json({ success: true, data: null });
 }
 
+export async function updateGlucoseLogController(req, res) {
+  const data = glucoseUpdateSchema.parse(req.body);
+  const log = await logService.updateGlucoseLog(req.params.logId, req.patientProfileId, data);
+  res.json({ success: true, data: log });
+}
+
+export async function deleteGlucoseLogController(req, res) {
+  await logService.deleteGlucoseLog(req.params.logId, req.patientProfileId);
+  res.json({ success: true, data: null });
+}
+
 export async function logMealController(req, res) {
   const data = mealSchema.parse(req.body);
   const log = await logService.createMealLog({ patientId: req.patientProfileId, hospitalId: req.hospitalId, ...data });
@@ -94,6 +107,17 @@ export async function updateActivityLogController(req, res) {
 
 export async function deleteActivityLogController(req, res) {
   await logService.deleteActivityLog(req.params.logId, req.patientProfileId);
+  res.json({ success: true, data: null });
+}
+
+export async function updateMealLogController(req, res) {
+  const data = mealUpdateSchema.parse(req.body);
+  const log = await logService.updateMealLog(req.params.logId, req.patientProfileId, data);
+  res.json({ success: true, data: log });
+}
+
+export async function deleteMealLogController(req, res) {
+  await logService.deleteMealLog(req.params.logId, req.patientProfileId);
   res.json({ success: true, data: null });
 }
 

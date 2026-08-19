@@ -11,11 +11,15 @@ import { scopeToHospital } from "../middleware/scopeToHospital.js";
 import { attachPatientProfile } from "../middleware/attachProfile.js";
 import {
   logGlucoseController,
+  updateGlucoseLogController,
+  deleteGlucoseLogController,
   logInsulinController,
   listInsulinLogsController,
   updateInsulinLogController,
   deleteInsulinLogController,
   logMealController,
+  updateMealLogController,
+  deleteMealLogController,
   logActivityController,
   getActivitySummaryController,
   updateActivityLogController,
@@ -46,6 +50,14 @@ router.post("/logs/note", asyncHandler(logNoteController));
 router.get("/insulin-records", asyncHandler(listInsulinLogsController));
 router.patch("/logs/insulin/:logId", asyncHandler(updateInsulinLogController));
 router.delete("/logs/insulin/:logId", asyncHandler(deleteInsulinLogController));
+
+// Glucose Logs — edit/delete individual entries
+router.patch("/logs/glucose/:logId", asyncHandler(updateGlucoseLogController));
+router.delete("/logs/glucose/:logId", asyncHandler(deleteGlucoseLogController));
+
+// Meal Logs — edit/delete individual entries
+router.patch("/logs/meal/:logId", asyncHandler(updateMealLogController));
+router.delete("/logs/meal/:logId", asyncHandler(deleteMealLogController));
 
 // Activity screen — summary + edit/delete individual entries
 router.get("/activity-summary", asyncHandler(getActivitySummaryController));

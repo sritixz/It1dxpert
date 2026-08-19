@@ -250,9 +250,10 @@ model GlucoseLog {
   hospitalId String
   hospital   Hospital @relation(fields: [hospitalId], references: [id])
 
-  value    Float // mg/dL
-  context  String? // e.g. "pre-lunch", "post-dinner"
-  loggedAt DateTime @default(now())
+  value     Float // mg/dL
+  context   String? // e.g. "pre-lunch", "post-dinner"
+  loggedAt  DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([patientId, loggedAt])
   @@map("glucose_logs")
@@ -269,6 +270,7 @@ model InsulinLog {
   insulinType String? // e.g. "rapid-acting", "long-acting"
   reason      String? // e.g. "Breakfast", "Lunch", "Basal" — new for Insulin Records screen
   loggedAt    DateTime @default(now())
+  createdAt   DateTime @default(now())
 
   @@index([patientId, loggedAt])
   @@map("insulin_logs")
@@ -281,10 +283,11 @@ model MealLog {
   hospitalId String
   hospital   Hospital @relation(fields: [hospitalId], references: [id])
 
-  carbs    Float // grams
-  mealType String? // breakfast/lunch/dinner/snack
-  notes    String?
-  loggedAt DateTime @default(now())
+  carbs     Float // grams
+  mealType  String? // breakfast/lunch/dinner/snack
+  notes     String?
+  loggedAt  DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([patientId, loggedAt])
   @@map("meal_logs")
@@ -300,6 +303,7 @@ model ActivityLog {
   durationMins Int
   activityType String?
   loggedAt     DateTime @default(now())
+  createdAt    DateTime @default(now())
 
   @@index([patientId, loggedAt])
   @@map("activity_logs")

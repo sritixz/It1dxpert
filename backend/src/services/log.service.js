@@ -73,16 +73,32 @@ export async function createInsulinLog({ patientId, hospitalId, units, insulinTy
   return log;
 }
 
-export async function updateInsulinLog(logId, patientId, { units, insulinType, reason }) {
+export async function updateInsulinLog(logId, patientId, { units, insulinType, reason, loggedAt }) {
   const existing = await prisma.insulinLog.findFirst({ where: { id: logId, patientId } });
   if (!existing) throw new AppError("Insulin log not found", 404);
-  return prisma.insulinLog.update({ where: { id: logId }, data: { units, insulinType, reason } });
+  const data = { units, insulinType, reason };
+  if (loggedAt) data.loggedAt = new Date(loggedAt);
+  return prisma.insulinLog.update({ where: { id: logId }, data });
 }
 
 export async function deleteInsulinLog(logId, patientId) {
   const existing = await prisma.insulinLog.findFirst({ where: { id: logId, patientId } });
   if (!existing) throw new AppError("Insulin log not found", 404);
   return prisma.insulinLog.delete({ where: { id: logId } });
+}
+
+export async function updateGlucoseLog(logId, patientId, { value, context, loggedAt }) {
+  const existing = await prisma.glucoseLog.findFirst({ where: { id: logId, patientId } });
+  if (!existing) throw new AppError("Glucose log not found", 404);
+  const data = { value, context };
+  if (loggedAt) data.loggedAt = new Date(loggedAt);
+  return prisma.glucoseLog.update({ where: { id: logId }, data });
+}
+
+export async function deleteGlucoseLog(logId, patientId) {
+  const existing = await prisma.glucoseLog.findFirst({ where: { id: logId, patientId } });
+  if (!existing) throw new AppError("Glucose log not found", 404);
+  return prisma.glucoseLog.delete({ where: { id: logId } });
 }
 
 /**
@@ -176,16 +192,32 @@ export async function createActivityLog({ patientId, hospitalId, durationMins, a
   return log;
 }
 
-export async function updateActivityLog(logId, patientId, { durationMins, activityType }) {
+export async function updateActivityLog(logId, patientId, { durationMins, activityType, loggedAt }) {
   const existing = await prisma.activityLog.findFirst({ where: { id: logId, patientId } });
   if (!existing) throw new AppError("Activity log not found", 404);
-  return prisma.activityLog.update({ where: { id: logId }, data: { durationMins, activityType } });
+  const data = { durationMins, activityType };
+  if (loggedAt) data.loggedAt = new Date(loggedAt);
+  return prisma.activityLog.update({ where: { id: logId }, data });
 }
 
 export async function deleteActivityLog(logId, patientId) {
   const existing = await prisma.activityLog.findFirst({ where: { id: logId, patientId } });
   if (!existing) throw new AppError("Activity log not found", 404);
   return prisma.activityLog.delete({ where: { id: logId } });
+}
+
+export async function updateMealLog(logId, patientId, { carbs, mealType, notes, loggedAt }) {
+  const existing = await prisma.mealLog.findFirst({ where: { id: logId, patientId } });
+  if (!existing) throw new AppError("Meal log not found", 404);
+  const data = { carbs, mealType, notes };
+  if (loggedAt) data.loggedAt = new Date(loggedAt);
+  return prisma.mealLog.update({ where: { id: logId }, data });
+}
+
+export async function deleteMealLog(logId, patientId) {
+  const existing = await prisma.mealLog.findFirst({ where: { id: logId, patientId } });
+  if (!existing) throw new AppError("Meal log not found", 404);
+  return prisma.mealLog.delete({ where: { id: logId } });
 }
 
 /**

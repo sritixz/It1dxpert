@@ -80,8 +80,47 @@ export async function logGlucose(payload) {
   return data.data;
 }
 
+export async function updateGlucoseLog(logId, payload) {
+  const { data } = await apiClient.patch(`/patient/logs/glucose/${logId}`, payload);
+  return data.data;
+}
+
+export async function deleteGlucoseLog(logId) {
+  await apiClient.delete(`/patient/logs/glucose/${logId}`);
+}
+
 export async function logMeal(payload) {
   const { data } = await apiClient.post("/patient/logs/meal", payload);
+  return data.data;
+}
+
+export async function updateMealLog(logId, payload) {
+  const { data } = await apiClient.patch(`/patient/logs/meal/${logId}`, payload);
+  return data.data;
+}
+
+export async function deleteMealLog(logId) {
+  await apiClient.delete(`/patient/logs/meal/${logId}`);
+}
+
+// --- Medications ---
+export async function fetchMedications() {
+  const { data } = await apiClient.get("/patient/medications");
+  return data.data;
+}
+
+export async function createMedication(payload) {
+  const { data } = await apiClient.post("/patient/medications", payload);
+  return data.data;
+}
+
+export async function logMedicationDose(payload) {
+  const { data } = await apiClient.post("/patient/medications/dose", payload);
+  return data.data;
+}
+
+export async function fetchMedicationAdherence(days = 7) {
+  const { data } = await apiClient.get("/patient/medications/adherence", { params: { days } });
   return data.data;
 }
 
