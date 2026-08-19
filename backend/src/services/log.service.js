@@ -405,7 +405,7 @@ export async function getPatient7DayReportData(patientId) {
       include: {
         user: { select: { email: true, phone: true } },
         hospital: { select: { name: true } },
-        doctor: { select: { fullName: true } },
+        assignedDoctor: { select: { fullName: true } },
       },
     }),
     prisma.glucoseLog.findMany({ where: { patientId, loggedAt: { gte: since } }, orderBy: { loggedAt: "asc" } }),
@@ -426,7 +426,7 @@ export async function getPatient7DayReportData(patientId) {
       email: patient.user?.email || "",
       phone: patient.user?.phone || "",
       hospitalName: patient.hospital?.name || "",
-      doctorName: patient.doctor?.fullName || "",
+      doctorName: patient.assignedDoctor?.fullName || "",
       diabetesType: patient.diabetesType || "",
       gender: patient.gender || "",
       dateOfBirth: patient.dateOfBirth ? patient.dateOfBirth.toISOString().slice(0, 10) : "",

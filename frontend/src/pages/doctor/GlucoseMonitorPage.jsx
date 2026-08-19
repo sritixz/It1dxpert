@@ -57,11 +57,17 @@ export function GlucoseMonitorPage() {
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExportPdf = async () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert("Could not open report window. Please allow popups for this website.");
+      return;
+    }
     setIsExporting(true);
     try {
       const data = await fetchPatient7DayReportForDoctor(patientId);
-      exportReportToPdf(data);
+      exportReportToPdf(data, printWindow);
     } catch (err) {
+      printWindow.close();
       console.error("Failed to export PDF:", err);
       alert("Failed to generate PDF report. Please try again.");
     } finally {

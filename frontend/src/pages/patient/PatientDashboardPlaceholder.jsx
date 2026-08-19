@@ -40,11 +40,17 @@ export function PatientDashboardPlaceholder() {
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExportPdf = async () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert("Could not open report window. Please allow popups for this website.");
+      return;
+    }
     setIsExporting(true);
     try {
       const data = await fetchPatient7DayReport();
-      exportReportToPdf(data);
+      exportReportToPdf(data, printWindow);
     } catch (err) {
+      printWindow.close();
       console.error("Failed to export PDF:", err);
       alert("Failed to generate PDF report. Please try again.");
     } finally {
@@ -75,6 +81,8 @@ export function PatientDashboardPlaceholder() {
     return local.toISOString().slice(0, 10);
   };
 
+  const [logDate, setLogDate] = useState(getTodayDateStr());
+
   const loadData = async () => {
     setIsLoading(true);
     setError("");
@@ -100,6 +108,7 @@ export function PatientDashboardPlaceholder() {
 
   const openLogModal = (type) => {
     setActiveLogType(type);
+    setLogDate(getTodayDateStr());
     setSubmitError("");
     setSubmitSuccess("");
     setIsModalOpen(true);
@@ -113,6 +122,7 @@ export function PatientDashboardPlaceholder() {
     setMealNotes("");
     setInsulinUnits("");
     setActivityMins("");
+    setLogDate(getTodayDateStr());
 
     // Reset AI Scanner values
     setAiFile(null);
@@ -129,25 +139,29 @@ export function PatientDashboardPlaceholder() {
     setSubmitSuccess("");
 
     try {
+      const d = new Date();
+      const [yr, mo, dy] = logDate.split("-").map(Number);
+      const loggedAt = new Date(yr, mo - 1, dy, d.getHours(), d.getMinutes(), d.getSeconds()).toISOString();
+
       if (activeLogType === "glucose") {
         const val = parseFloat(glucoseValue);
         if (isNaN(val) || val <= 0) throw new Error("Glucose value must be a positive number.");
-        await logGlucose({ value: val, context: glucoseContext });
+        await logGlucose({ value: val, context: glucoseContext, loggedAt });
       } else if (activeLogType === "meal") {
         const carbs = parseFloat(carbValue);
         if (isNaN(carbs) || carbs < 0) throw new Error("Carb intake must be a positive number.");
-        await logMeal({ carbs, mealType, notes: mealNotes || undefined });
+        await logMeal({ carbs, mealType, notes: mealNotes || undefined, loggedAt });
       } else if (activeLogType === "insulin") {
         const units = parseFloat(insulinUnits);
         if (isNaN(units) || units <= 0) throw new Error("Insulin units must be a positive number.");
         const finalInsulinType = (insulinType === "Other Metals" || insulinType === "Other Meds")
           ? customInsulinType.trim() || insulinType
           : insulinType;
-        await logInsulin({ units, insulinType: finalInsulinType, reason: insulinReason });
+        await logInsulin({ units, insulinType: finalInsulinType, reason: insulinReason, loggedAt });
       } else if (activeLogType === "activity") {
         const duration = parseInt(activityMins);
         if (isNaN(duration) || duration <= 0) throw new Error("Activity duration must be a positive integer.");
-        await logActivity({ durationMins: duration, activityType });
+        await logActivity({ durationMins: duration, activityType, loggedAt });
       }
 
       setSubmitSuccess("Logged successfully!");
@@ -864,6 +878,21 @@ export function PatientDashboardPlaceholder() {
                       </div>
                     </div>
                   )}
+
+                  {/* Date Input */}
+                  <div>
+                    <label className="block text-xs font-semibold text-ink mb-1">
+                      Log Date
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      max={getTodayDateStr()}
+                      value={logDate}
+                      onChange={(e) => setLogDate(e.target.value)}
+                      className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-primary text-ink"
+                    />
+                  </div>
 
                   {/* Submit button */}
                   <div className="flex gap-2 pt-2">

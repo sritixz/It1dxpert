@@ -2,7 +2,7 @@
  * Formats patient health details, 7-day glucose trends, and chronological log history
  * into a highly professional, print-friendly report page and opens the browser print dialog.
  */
-export function exportReportToPdf(reportData) {
+export function exportReportToPdf(reportData, existingWindow) {
   const patient = reportData.patient || {};
   const stats = reportData.trends?.stats || {};
   const insights = reportData.trends?.insights || {};
@@ -47,7 +47,7 @@ export function exportReportToPdf(reportData) {
   ].sort((a, b) => new Date(b.loggedAt) - new Date(a.loggedAt));
 
   const totalLogsCount = allLogs.length;
-  const printWindow = window.open('', '_blank');
+  const printWindow = existingWindow || window.open('', '_blank');
   
   if (!printWindow) {
     alert('Could not open report window. Please allow popups for this website.');
