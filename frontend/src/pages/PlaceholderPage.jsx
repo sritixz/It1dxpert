@@ -119,6 +119,22 @@ function DailyLogPlaceholder() {
   const [carbValue, setCarbValue] = useState("");
   const [mealType, setMealType] = useState("Breakfast");
   const [mealNotes, setMealNotes] = useState("");
+  const [isEstimatingCarbs, setIsEstimatingCarbs] = useState(false);
+
+  const handleDescriptionBlur = async () => {
+    if (!mealNotes || mealNotes.trim().length < 3) return;
+    setIsEstimatingCarbs(true);
+    try {
+      const result = await analyzeMealText(mealNotes);
+      if (result && result.carbs !== undefined) {
+        setCarbValue(result.carbs.toString());
+      }
+    } catch (err) {
+      console.error("Auto carb calculation failed:", err);
+    } finally {
+      setIsEstimatingCarbs(false);
+    }
+  };
 
   const [insulinUnits, setInsulinUnits] = useState("");
   const [insulinType, setInsulinType] = useState("Lispro (Meal Time)");
@@ -697,8 +713,14 @@ function DailyLogPlaceholder() {
                         placeholder="Meal description (optional)"
                         value={mealNotes}
                         onChange={(e) => setMealNotes(e.target.value)}
+                        onBlur={handleDescriptionBlur}
                         className="w-full rounded-lg border border-border bg-bg px-4 py-2 text-xs outline-none focus:border-primary text-ink"
                       />
+                      {isEstimatingCarbs && (
+                        <div className="text-[10px] text-primary flex items-center gap-1 mt-1 animate-pulse font-semibold">
+                          <Loader2 size={10} className="animate-spin" /> Estimating carbohydrates via CareAI...
+                        </div>
+                      )}
                     </div>
 
                     <TimeSelector 

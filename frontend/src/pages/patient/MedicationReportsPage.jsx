@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { 
   FileText, FolderOpen, Upload, Trash2, Calendar, 
-  Check, Loader2, Info, FileCode, Eye, Pill, Plus, Clock, AlertCircle, Sparkles, Trophy
+  Check, Loader2, Info, FileCode, Eye, Pill, Plus, Clock, AlertCircle, Sparkles, Trophy, Camera
 } from "lucide-react";
 import { Card } from "../../components/ui/Card.jsx";
 import { Button } from "../../components/ui/Button.jsx";
@@ -371,6 +371,7 @@ function DocumentsTab() {
   const [appointmentId, setAppointmentId] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [showCameraModal, setShowCameraModal] = useState(false);
 
   const BACKEND_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api").replace("/api", "");
 
@@ -498,7 +499,7 @@ function DocumentsTab() {
                 type="file"
                 onChange={handleFileChange}
                 accept=".pdf,image/*"
-                required
+                required={!file}
                 className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
               />
               <Upload size={18} className="text-muted mx-auto mb-1" />
@@ -507,6 +508,16 @@ function DocumentsTab() {
               </span>
               <span className="text-[9px] text-muted block mt-0.5">PDF, PNG, JPG up to 10MB</span>
             </div>
+
+            <div className="text-center text-[10px] text-muted font-semibold my-1">OR</div>
+
+            <button
+              type="button"
+              onClick={() => setShowCameraModal(true)}
+              className="flex items-center justify-center gap-1.5 rounded-lg border border-primary/20 bg-primary-light/10 text-primary py-2 text-xs font-bold hover:bg-primary-light/20 transition-all"
+            >
+              <Camera size={14} /> Take Photo with Camera
+            </button>
           </div>
 
           <Input
@@ -686,6 +697,125 @@ function DocumentsTab() {
           </div>
         )}
       </div>
+
+      {showCameraModal && (
+        <CameraCaptureModal
+          onCapture={(capturedFile) => {
+            setFile(capturedFile);
+            setCustomName(`Camera_Capture_${new Date().toISOString().slice(0, 10)}`);
+            setShowCameraModal(false);
+          }}
+          onClose={() => setShowCameraModal(false)}
+        />
+      )}
     </div>
+  );
+}
+
+// Camera Capture Modal
+function CameraCaptureModal({ onCapture, onClose }) {
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const [stream, setStream] = useState(null);
+  const [cameraError, setCameraError] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let activeStream = null;
+    navigator.mediaDevices.getUserMedia({ 
+      video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } 
+    })
+    .then((mediaStream) => {
+      activeStream = mediaStream;
+      setStream(mediaStream);
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+      }
+      setIsLoading(false);
+    })
+    .catch((err) => {
+      console.error("Camera access error:", err);
+      setCameraError("Could not access camera. Please check permissions.");
+      setIsLoading(false);
+    });
+
+    return () => {
+      if (activeStream) {
+        activeStream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
+
+  const handleCapture = () => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext("2d");
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const file = new File([blob], `camera_capture_${Date.now()}.png`, { type: "image/png" });
+          if (stream) {
+            stream.getTracks().forEach((track) => track.stop());
+          }
+          onCapture(file);
+        }
+      }, "image/png");
+    }
+  };
+
+  return (
+    <Modal title="Take Document Photo" onClose={onClose}>
+      <div className="flex flex-col gap-4 items-center">
+        {isLoading && (
+          <div className="flex flex-col items-center justify-center py-10">
+            <Loader2 className="animate-spin text-primary mb-2" size={24} />
+            <span className="text-xs text-muted font-semibold">Starting camera feed...</span>
+          </div>
+        )}
+
+        {cameraError && (
+          <div className="flex items-center gap-1.5 p-3 rounded-lg border border-critical/30 bg-critical-light text-critical text-xs text-center w-full">
+            <AlertCircle size={14} className="flex-shrink-0" />
+            <span>{cameraError}</span>
+          </div>
+        )}
+
+        {!cameraError && (
+          <div className="relative w-full aspect-video rounded-xl bg-black overflow-hidden border border-border">
+            <video 
+              ref={videoRef} 
+              autoPlay 
+              playsInline 
+              className="w-full h-full object-cover"
+            />
+            <canvas ref={canvasRef} className="hidden" />
+          </div>
+        )}
+
+        <div className="flex gap-2 w-full mt-2">
+          <Button 
+            type="button" 
+            onClick={onClose} 
+            className="flex-1 bg-surface text-ink hover:bg-bg border border-border"
+          >
+            Cancel
+          </Button>
+          {!cameraError && !isLoading && (
+            <Button 
+              type="button" 
+              onClick={handleCapture} 
+              className="flex-1"
+            >
+              Capture Photo
+            </Button>
+          )}
+        </div>
+      </div>
+    </Modal>
   );
 }
