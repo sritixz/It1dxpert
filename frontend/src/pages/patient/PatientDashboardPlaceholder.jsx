@@ -22,6 +22,7 @@ export function PatientDashboardPlaceholder() {
   const { user } = useAuth();
   const [dailyLog, setDailyLog] = useState(null);
   const [gamification, setGamification] = useState(null);
+  const [sevenDayReport, setSevenDayReport] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   
@@ -113,12 +114,14 @@ export function PatientDashboardPlaceholder() {
     setError("");
     try {
       const todayStr = getTodayDateStr();
-      const [logRes, gamRes] = await Promise.all([
+      const [logRes, gamRes, reportRes] = await Promise.all([
         fetchDailyLog(todayStr),
-        fetchGamificationStatus()
+        fetchGamificationStatus(),
+        fetchPatient7DayReport()
       ]);
       setDailyLog(logRes);
       setGamification(gamRes);
+      setSevenDayReport(reportRes);
     } catch (err) {
       console.error("Error loading dashboard data:", err);
       setError("Failed to load today's dashboard metrics.");
@@ -301,25 +304,49 @@ export function PatientDashboardPlaceholder() {
     }
   };
 
+  // Helper to determine if patient is "New" or "Older"
+  const isNewPatient = () => {
+    const profile = user?.patientProfile;
+    if (!profile) return true;
+    
+    if (profile.diagnosisDate) {
+      const diagDate = new Date(profile.diagnosisDate);
+      const daysSinceDiag = (new Date() - diagDate) / (1000 * 60 * 60 * 24);
+      if (daysSinceDiag <= 90) return true;
+    }
+    
+    if (profile.createdAt) {
+      const createdDate = new Date(profile.createdAt);
+      const daysSinceCreated = (new Date() - createdDate) / (1000 * 60 * 60 * 24);
+      if (daysSinceCreated <= 30) return true;
+    }
+    
+    return false;
+  };
+
+  const newPatient = isNewPatient();
+  const glucoseTarget = newPatient ? 7 : 4;
+
   // Compute log completion checklist
-  const hasGlucose = dailyLog?.glucose?.length >= 4;
-  const hasInsulin = dailyLog?.insulin?.length >= 4;
-  const hasMeals = dailyLog?.meals?.length >= 4;
-  const hasActivity = dailyLog?.activity?.length >= 4;
+  const hasGlucose = (dailyLog?.glucose?.length || 0) >= glucoseTarget;
+  const hasInsulin = (dailyLog?.insulin?.length || 0) >= 4;
+  const hasMeals = (dailyLog?.meals?.length || 0) >= 4;
+  const hasActivity = (dailyLog?.activity?.length || 0) >= 4;
 
   const checklist = [
-    { id: "glucose", name: "Glucose Reading", status: hasGlucose, count: dailyLog?.glucose?.length || 0, icon: Droplet, color: "text-primary bg-primary-light" },
-    { id: "insulin", name: "Insulin Administered", status: hasInsulin, count: dailyLog?.insulin?.length || 0, icon: Syringe, color: "text-critical bg-critical-light" },
-    { id: "meal", name: "Meal / Carbohydrates", status: hasMeals, count: dailyLog?.meals?.length || 0, icon: UtensilsCrossed, color: "text-warning bg-warning-light" },
-    { id: "activity", name: "Physical Activity", status: hasActivity, count: dailyLog?.activity?.length || 0, icon: Footprints, color: "text-success bg-success-light" }
+    { id: "glucose", name: "Glucose Reading", status: hasGlucose, count: dailyLog?.glucose?.length || 0, target: glucoseTarget, icon: Droplet, color: "text-primary bg-primary-light" },
+    { id: "insulin", name: "Insulin Administered", status: hasInsulin, count: dailyLog?.insulin?.length || 0, target: 4, icon: Syringe, color: "text-critical bg-critical-light" },
+    { id: "meal", name: "Meal / Carbohydrates", status: hasMeals, count: dailyLog?.meals?.length || 0, target: 4, icon: UtensilsCrossed, color: "text-warning bg-warning-light" },
+    { id: "activity", name: "Physical Activity", status: hasActivity, count: dailyLog?.activity?.length || 0, target: 4, icon: Footprints, color: "text-success bg-success-light" }
   ];
 
-  const totalLogs = Math.min(4, dailyLog?.glucose?.length || 0) +
+  const totalLogs = Math.min(glucoseTarget, dailyLog?.glucose?.length || 0) +
                     Math.min(4, dailyLog?.insulin?.length || 0) +
                     Math.min(4, dailyLog?.meals?.length || 0) +
                     Math.min(4, dailyLog?.activity?.length || 0);
 
-  const progressPercent = Math.round((totalLogs / 16) * 100);
+  const maxTotalLogs = glucoseTarget + 12; // glucoseTarget + 4 + 4 + 4
+  const progressPercent = Math.round((totalLogs / maxTotalLogs) * 100);
   const loggedCount = checklist.filter((item) => item.status).length;
 
   // Format today's display date
@@ -505,7 +532,7 @@ export function PatientDashboardPlaceholder() {
                         {item.name}
                       </span>
                       <span className="text-[10px] text-muted font-medium mt-0.5">
-                        {item.count} / 4 logged
+                        {item.count} / {item.target} logged
                       </span>
                       <div className="mt-2 flex items-center justify-center">
                         {item.status ? (
