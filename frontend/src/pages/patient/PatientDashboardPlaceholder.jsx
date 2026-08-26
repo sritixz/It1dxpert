@@ -376,6 +376,81 @@ export function PatientDashboardPlaceholder() {
 
   const glucoseStyles = getGlucoseStatusStyles(latestGlucose?.value);
 
+  // --- Digital Notebook Logbook Table Helpers ---
+  const TIME_SLOTS = [
+    { id: "7_00_am_glucose", label: "7:00 AM", subLabel: "Glucose", type: "glucose", targetHour: 7, targetMin: 0 },
+    { id: "7_05_am_bolus", label: "7:05 AM", subLabel: "Bolus Dose", type: "insulin", targetHour: 7, targetMin: 5 },
+    { id: "7_15_am_meal", label: "7:15 AM", subLabel: "Meal", type: "meal", targetHour: 7, targetMin: 15 },
+    { id: "9_15_am_glucose", label: "9:15 AM", subLabel: "Glucose check", type: "glucose", targetHour: 9, targetMin: 15 },
+    { id: "12_30_pm_glucose", label: "12:30 PM", subLabel: "Glucose check", type: "glucose", targetHour: 12, targetMin: 30 },
+    { id: "12_35_pm_bolus", label: "12:35 PM", subLabel: "Bolus Insulin", type: "insulin", targetHour: 12, targetMin: 35 },
+    { id: "12_45_pm_meal", label: "12:45 PM", subLabel: "Meal", type: "meal", targetHour: 12, targetMin: 45 },
+    { id: "3_45_pm_glucose", label: "3:45 PM", subLabel: "Glucose check", type: "glucose", targetHour: 15, targetMin: 45 },
+    { id: "7_00_pm_glucose", label: "7:00 PM", subLabel: "Glucose", type: "glucose", targetHour: 19, targetMin: 0 },
+    { id: "7_05_pm_insulin", label: "7:05 PM", subLabel: "Meal Insulin", type: "insulin", targetHour: 19, targetMin: 5 },
+    { id: "7_15_pm_meal", label: "7:15 PM", subLabel: "Meal", type: "meal", targetHour: 19, targetMin: 15 },
+    { id: "10_00_pm_glucose", label: "10:00 PM", subLabel: "Glucose", type: "glucose", targetHour: 22, targetMin: 0 },
+    { id: "10_05_pm_insulin", label: "10:05 PM", subLabel: "Insulin", type: "insulin", targetHour: 22, targetMin: 5 }
+  ];
+
+  const getLast7Dates = () => {
+    const dates = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      dates.push(d.toISOString().slice(0, 10));
+    }
+    return dates;
+  };
+
+  const getLogsForDate = (dateStr) => {
+    const dateGlucose = (sevenDayReport?.logs?.glucose || []).filter(g => g.loggedAt.startsWith(dateStr));
+    const dateInsulin = (sevenDayReport?.logs?.insulin || []).filter(i => i.loggedAt.startsWith(dateStr));
+    const dateMeals = (sevenDayReport?.logs?.meals || []).filter(m => m.loggedAt.startsWith(dateStr));
+    return { glucose: dateGlucose, insulin: dateInsulin, meals: dateMeals };
+  };
+
+  const mapLogsToSlots = (dateLogs) => {
+    const rowData = {};
+    TIME_SLOTS.forEach(slot => {
+      rowData[slot.id] = null;
+    });
+
+    const mapTypeLogs = (logs, type) => {
+      logs.forEach(log => {
+        const logDate = new Date(log.loggedAt);
+        const logHour = logDate.getHours();
+        const logMin = logDate.getMinutes();
+        const logTimeInMinutes = logHour * 60 + logMin;
+
+        let closestSlot = null;
+        let minDiff = Infinity;
+
+        TIME_SLOTS.filter(s => s.type === type).forEach(slot => {
+          const slotTimeInMinutes = slot.targetHour * 60 + slot.targetMin;
+          const diff = Math.abs(logTimeInMinutes - slotTimeInMinutes);
+          if (diff < minDiff && diff <= 120) {
+            minDiff = diff;
+            closestSlot = slot;
+          }
+        });
+
+        if (closestSlot) {
+          const existing = rowData[closestSlot.id];
+          if (!existing || minDiff < existing.diff) {
+            rowData[closestSlot.id] = { log, diff: minDiff };
+          }
+        }
+      });
+    };
+
+    mapTypeLogs(dateLogs.glucose || [], "glucose");
+    mapTypeLogs(dateLogs.insulin || [], "insulin");
+    mapTypeLogs(dateLogs.meals || [], "meal");
+
+    return rowData;
+  };
+
   return (
     <div className="flex flex-col gap-6">
       {/* 1. Header Greeting & Quick Actions */}
@@ -730,6 +805,115 @@ export function PatientDashboardPlaceholder() {
             </Card>
 
           </div>
+
+          {/* 4. Digital Logbook Grid (Notebook style) */}
+          <Card className="overflow-hidden border border-border/80 shadow-sm mt-6">
+            <div className="p-5 border-b border-border/60 bg-bg/50 flex justify-between items-center flex-wrap gap-3">
+              <div>
+                <h3 className="font-display text-base font-bold text-ink flex items-center gap-1.5">
+                  <Calendar size={18} className="text-primary" /> Daily Logbook Grid
+                </h3>
+                <p className="text-xs text-muted mt-0.5">Chronological records snapped to standard daily routine times.</p>
+              </div>
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-muted bg-surface px-2.5 py-1 rounded-lg border border-border shadow-3xs">
+                Past 7 Days
+              </span>
+            </div>
+
+            <div className="overflow-x-auto max-w-full relative">
+              {/* Notebook left margin vertical rule */}
+              <div className="absolute top-0 bottom-0 left-[119px] w-[2px] bg-red-400 opacity-60 z-10 pointer-events-none" />
+              
+              <table className="w-full text-left border-collapse min-w-[1250px] font-body text-xs relative z-0">
+                <thead>
+                  <tr className="bg-bg/40 border-b border-border/80">
+                    <th className="p-3.5 pl-5 font-bold text-ink w-[120px] bg-surface sticky left-0 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.02)] border-r border-border/60">Date</th>
+                    {TIME_SLOTS.map(slot => (
+                      <th key={slot.id} className="p-3 font-semibold text-muted text-center border-r border-border/40 min-w-[95px] select-none">
+                        <div className="text-[10px] font-bold text-ink">{slot.label}</div>
+                        <div className={`text-[8px] font-black uppercase tracking-wider mt-1 px-1.5 py-0.2 rounded border inline-block select-none ${
+                          slot.type === "glucose" ? "bg-primary-light text-primary border-primary/20" :
+                          slot.type === "insulin" ? "bg-critical-light text-critical border-critical/20" :
+                          "bg-warning-light text-warning border-warning/20"
+                        }`}>
+                          {slot.subLabel}
+                        </div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {getLast7Dates().map((dateStr) => {
+                    const dateLogs = getLogsForDate(dateStr);
+                    const slotsData = mapLogsToSlots(dateLogs);
+                    const displayDate = new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      weekday: "short"
+                    });
+                    
+                    return (
+                      <tr key={dateStr} className="hover:bg-bg/20 border-b border-border/30 transition-colors">
+                        {/* Sticky Date Column */}
+                        <td className="p-3.5 pl-5 font-bold text-ink bg-surface sticky left-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.02)] border-r border-border/60">
+                          <div className="font-display font-bold text-ink">{displayDate}</div>
+                          <div className="text-[9px] font-semibold text-muted mt-0.5">
+                            {dateStr.split("-").reverse().join("/")}
+                          </div>
+                        </td>
+                        
+                        {TIME_SLOTS.map(slot => {
+                          const entry = slotsData[slot.id];
+                          if (!entry) {
+                            return (
+                              <td key={slot.id} className="p-3 text-center text-muted/30 font-medium border-r border-border/30 select-none">
+                                —
+                              </td>
+                            );
+                          }
+                          
+                          const { log } = entry;
+                          const logTimeStr = new Date(log.loggedAt).toLocaleTimeString("en-US", {
+                            hour: "2-digit",
+                            minute: "2-digit"
+                          });
+
+                          let content = "";
+                          let styleClass = "";
+                          let tooltipTitle = "";
+
+                          if (slot.type === "glucose") {
+                            content = `${log.value}`;
+                            const isNormal = log.value >= 70 && log.value <= 180;
+                            styleClass = isNormal 
+                              ? "bg-success-light text-success border-success/30 font-bold" 
+                              : "bg-critical-light text-critical border-critical/30 font-bold animate-pulse";
+                            tooltipTitle = `Glucose: ${log.value} mg/dL (${log.context || 'Other'}) at ${logTimeStr}`;
+                          } else if (slot.type === "insulin") {
+                            content = `${log.units}u`;
+                            styleClass = "bg-critical-light text-critical border-critical/30 font-semibold";
+                            tooltipTitle = `Insulin: ${log.units} units of ${log.insulinType || 'Lispro'} for ${log.reason || 'Meal'} at ${logTimeStr}`;
+                          } else if (slot.type === "meal") {
+                            content = `${log.carbs}g`;
+                            styleClass = "bg-warning-light text-warning border-warning/30 font-semibold";
+                            tooltipTitle = `Meal: ${log.carbs}g carbs (${log.mealType || 'Lunch'}) ${log.notes ? `- ${log.notes}` : ''} at ${logTimeStr}`;
+                          }
+
+                          return (
+                            <td key={slot.id} className="p-3 text-center border-r border-border/30" title={tooltipTitle}>
+                              <div className={`inline-block px-2.5 py-1 rounded-lg border text-[11px] shadow-3xs cursor-default ${styleClass}`}>
+                                {content}
+                              </div>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
         </>
       )}
 
