@@ -349,6 +349,10 @@ export function PatientDashboardPlaceholder() {
   const progressPercent = Math.round((totalLogs / maxTotalLogs) * 100);
   const loggedCount = checklist.filter((item) => item.status).length;
 
+  const radius = 22;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (progressPercent / 100) * circumference;
+
   // Format today's display date
   const displayDateStr = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -375,35 +379,92 @@ export function PatientDashboardPlaceholder() {
   return (
     <div className="flex flex-col gap-6">
       {/* 1. Header Greeting & Quick Actions */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="font-display text-2xl font-bold text-ink">
-            Welcome back{user?.patientProfile?.fullName ? `, ${user.patientProfile.fullName.split(" ")[0]}` : ""} 👋
-          </h2>
-          <p className="font-body text-sm text-muted">
-            Here's your summary for <span className="font-semibold text-ink">{displayDateStr}</span>
-          </p>
-          {/* Metadata badges */}
-          <div className="flex flex-wrap gap-2 mt-2 font-body text-xs text-muted">
-            <span className="px-2.5 py-1 rounded-lg bg-surface border border-border/80 shadow-xs">
-              Patient: <strong className="text-ink">{user?.patientProfile?.fullName}</strong>
-            </span>
-            {user?.patientProfile?.assignedDoctor && (
-              <span className="px-2.5 py-1 rounded-lg bg-surface border border-border/80 shadow-xs">
-                Doctor: <strong className="text-ink">Dr. {user.patientProfile.assignedDoctor.fullName}</strong> 
-                {user.patientProfile.assignedDoctor.specialization && ` (${user.patientProfile.assignedDoctor.specialization})`}
+      <div className="flex flex-col lg:flex-row justify-between items-stretch gap-6 p-6 rounded-2xl bg-surface border border-border/80 shadow-sm relative overflow-hidden">
+        {/* Background decorative gradient */}
+        <div className="absolute top-0 right-0 h-32 w-32 bg-radial from-primary/5 to-transparent rounded-full -mr-10 -mt-10 pointer-events-none" />
+
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 z-10">
+          {/* Relocated Circular Progress Widget */}
+          <div className="flex items-center gap-3 bg-bg/50 border border-border/40 rounded-xl p-3 shadow-2xs min-w-[165px]">
+            <div className="relative flex items-center justify-center h-14 w-14">
+              <svg className="w-14 h-14 transform -rotate-90">
+                <circle
+                  cx="28"
+                  cy="28"
+                  r={radius}
+                  className="stroke-border/40"
+                  strokeWidth="3.5"
+                  fill="transparent"
+                />
+                <motion.circle
+                  cx="28"
+                  cy="28"
+                  r={radius}
+                  className={
+                    progressPercent === 100 
+                      ? "stroke-success" 
+                      : progressPercent >= 50
+                      ? "stroke-primary"
+                      : "stroke-warning"
+                  }
+                  strokeWidth="3.5"
+                  fill="transparent"
+                  strokeDasharray={circumference}
+                  initial={{ strokeDashoffset: circumference }}
+                  animate={{ strokeDashoffset }}
+                  transition={{ duration: 0.8, ease: "easeOut" }}
+                  strokeLinecap="round"
+                />
+              </svg>
+              <span className="absolute font-display text-xs font-black text-ink">
+                {progressPercent}%
               </span>
-            )}
-            {user?.patientProfile?.hospital && (
-              <span className="px-2.5 py-1 rounded-lg bg-surface border border-border/80 shadow-xs">
-                Hospital: <strong className="text-ink">{user.patientProfile.hospital.name}</strong>
+            </div>
+            <div className="flex flex-col">
+              <span className="font-body text-xs font-bold text-ink">Daily Progress</span>
+              <span className="text-[10px] text-muted font-bold mt-0.5">{loggedCount}/4 metrics</span>
+              <span className={`text-[9px] font-extrabold uppercase mt-1 px-1.5 py-0.5 rounded border self-start ${
+                progressPercent === 100 
+                  ? "bg-success-light text-success border-success/20" 
+                  : "bg-surface text-muted border-border"
+              }`}>
+                {progressPercent === 100 ? "Complete" : "Logging"}
               </span>
-            )}
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="font-display text-2xl font-black text-ink tracking-tight">
+                Welcome back{user?.patientProfile?.fullName ? `, ${user.patientProfile.fullName.split(" ")[0]}` : ""} 👋
+              </h2>
+              <span className={`px-2.5 py-0.5 text-[9px] font-black tracking-wider uppercase rounded-full border shadow-3xs ${
+                newPatient 
+                  ? "bg-primary-light text-primary border-primary/20" 
+                  : "bg-teal-50 text-teal-600 border-teal-100/50"
+              }`}>
+                {newPatient ? "New Patient Plan" : "Maintenance Plan"}
+              </span>
+            </div>
+            <p className="font-body text-sm text-muted mt-1">
+              Here's your summary for <span className="font-semibold text-ink">{displayDateStr}</span>
+            </p>
+            {/* Metadata badges */}
+            <div className="flex flex-wrap gap-2 mt-2.5 font-body text-xs text-muted">
+              <span className="px-2.5 py-1 rounded-lg bg-bg border border-border/50 shadow-3xs">
+                Patient: <strong className="text-ink">{user?.patientProfile?.fullName}</strong>
+              </span>
+              {user?.patientProfile?.assignedDoctor && (
+                <span className="px-2.5 py-1 rounded-lg bg-bg border border-border/50 shadow-3xs">
+                  Doctor: <strong className="text-ink">Dr. {user.patientProfile.assignedDoctor.fullName}</strong>
+                </span>
+              )}
+            </div>
           </div>
         </div>
-        
+
         {/* Quick Log Buttons */}
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 z-10 lg:self-center lg:justify-end flex-1 max-w-full">
           <button 
             onClick={() => openLogModal("glucose")} 
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary-light text-primary hover:bg-primary hover:text-white font-body text-xs font-semibold transition-all shadow-sm"
@@ -424,7 +485,7 @@ export function PatientDashboardPlaceholder() {
           </button>
           <button 
             onClick={() => openLogModal("activity")} 
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-success-light text-success hover:bg-success hover:text-white font-body text-xs font-semibold transition-all shadow-sm animate-fade-in"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-success-light text-success hover:bg-success hover:text-white font-body text-xs font-semibold transition-all shadow-sm"
           >
             <Plus size={14} /> Log Activity
           </button>
@@ -432,7 +493,7 @@ export function PatientDashboardPlaceholder() {
             onClick={() => openLogModal("ai-scan")} 
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white font-body text-xs font-semibold transition-all shadow-sm border border-indigo-100/50 cursor-pointer"
           >
-            <Sparkles size={14} className="animate-pulse" /> AI Document Scan
+            <Sparkles size={14} /> AI Smart Log
           </button>
           <button 
             onClick={handleExportPdf}
@@ -467,13 +528,13 @@ export function PatientDashboardPlaceholder() {
           {/* 2. Top-Section Grid: Daily Progress & Streaks */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
-            {/* Logging Progress Bar Card */}
-            <Card className="lg:col-span-2 relative overflow-hidden flex flex-col justify-between">
+            {/* Logging Checklist Card */}
+            <Card className="lg:col-span-2 flex flex-col justify-between">
               <div>
                 <div className="flex justify-between items-start">
                   <div>
-                    <h3 className="font-display text-base font-bold text-ink">Daily Logging Progress</h3>
-                    <p className="text-xs text-muted mt-0.5">Log all four metrics today to maintain high data quality.</p>
+                    <h3 className="font-display text-base font-bold text-ink">Daily Checklist</h3>
+                    <p className="text-xs text-muted mt-0.5">Click on incomplete metrics to quickly log details.</p>
                   </div>
                   {progressPercent === 100 && (
                     <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-success-light text-success font-body text-xs font-bold shadow-sm border border-success/20 animate-pulse">
@@ -481,38 +542,10 @@ export function PatientDashboardPlaceholder() {
                     </span>
                   )}
                 </div>
-
-                {/* Progress Bar Display */}
-                <div className="mt-6">
-                  <div className="flex justify-between items-baseline mb-2">
-                    <span className="font-display text-3xl font-extrabold text-ink">
-                      {progressPercent}%
-                    </span>
-                    <span className="font-body text-xs text-muted font-semibold">
-                      {loggedCount} of 4 logged
-                    </span>
-                  </div>
-                  
-                  {/* Progress track */}
-                  <div className="h-3 w-full bg-bg rounded-full overflow-hidden border border-border">
-                    <motion.div 
-                      className={`h-full rounded-full ${
-                        progressPercent === 100 
-                          ? "bg-gradient-to-r from-success to-emerald-400" 
-                          : progressPercent >= 50
-                          ? "bg-gradient-to-r from-primary to-blue-400"
-                          : "bg-gradient-to-r from-warning to-amber-300"
-                      }`}
-                      initial={{ width: 0 }}
-                      animate={{ width: `${progressPercent}%` }}
-                      transition={{ duration: 0.8, ease: "easeOut" }}
-                    />
-                  </div>
-                </div>
               </div>
 
               {/* Progress Checklist Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 border-t border-border/60 pt-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
                 {checklist.map((item) => {
                   const Icon = item.icon;
                   return (
