@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>iT1DXpert - WhatsApp Integration Technical Specification</title>
+<style>
+  @page {
+    size: A4;
+    margin: 20mm 15mm 20mm 15mm;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #1e293b;
+    line-height: 1.5;
+    font-size: 13px;
+    margin: 0;
+    padding: 0;
+  }
+  h1 {
+    color: #0f172a;
+    font-size: 22px;
+    border-bottom: 2px solid #0284c7;
+    padding-bottom: 8px;
+    margin-top: 0;
+  }
+  h2 {
+    color: #0369a1;
+    font-size: 16px;
+    margin-top: 24px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 4px;
+  }
+  h3 {
+    color: #334155;
+    font-size: 14px;
+    margin-top: 16px;
+    margin-bottom: 6px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 12px;
+  }
+  th, td {
+    border: 1px solid #cbd5e1;
+    padding: 6px 10px;
+    text-align: left;
+  }
+  th {
+    background-color: #f1f5f9;
+    color: #0f172a;
+    font-weight: 600;
+  }
+  pre {
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    padding: 10px;
+    font-size: 11px;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    overflow-x: auto;
+    white-space: pre-wrap;
+  }
+  .box {
+    background-color: #f0f9ff;
+    border-left: 4px solid #0284c7;
+    padding: 8px 12px;
+    margin: 12px 0;
+    font-size: 12px;
+  }
+  .page-break {
+    page-break-before: always;
+  }
+</style>
+</head>
+<body>
+
+<h1>iT1DXpert — WhatsApp Integration System Architecture</h1>
+
+<div class="box">
+  <strong>System Target:</strong> Deterministic, zero-LLM-cost patient health metric and clinical document ingestion via Meta WhatsApp Business Cloud API, Node.js/Express, Prisma ORM, PostgreSQL, and S3-compatible Object Storage.
+</div>
+
+<h2>1. Meta WhatsApp Business Account (WABA) Configuration</h2>
+<ul>
+  <li><strong>Meta Developer Portal:</strong> Create a Business App at <code>developers.facebook.com</code> and add the <strong>WhatsApp</strong> product.</li>
+  <li><strong>Phone Registration:</strong> Attach a clean dedicated phone number not registered to standard WhatsApp accounts and verify OTP.</li>
+  <li><strong>Permanent System User Token:</strong> Generate a permanent System User Token under Meta Business Settings with <code>whatsapp_business_messaging</code> and <code>whatsapp_business_management</code> scopes.</li>
+  <li><strong>Webhook Subscription:</strong> Subscribe callback URL <code>https://api.domain.com/api/webhooks/whatsapp</code> to the <code>messages</code> field with verify token <code>WHATSAPP_VERIFY_TOKEN</code>.</li>
+</ul>
+
+<h2>2. Environment Variables (.env)</h2>
+<pre>
+WHATSAPP_API_VERSION=v20.0
+WHATSAPP_PHONE_NUMBER_ID=109876543210987
+WHATSAPP_ACCESS_TOKEN=EAAG...your_permanent_system_user_token
+WHATSAPP_VERIFY_TOKEN=it1dxpert_secure_token_2026
+
+AWS_REGION=ap-south-1
+AWS_S3_BUCKET_NAME=it1dxpert-clinical-docs
+AWS_ACCESS_KEY_ID=AKIA...
+AWS_SECRET_ACCESS_KEY=...
+</pre>
+
+<h2>3. Database Schema Mapping (Prisma Context)</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Model</th>
+      <th>Key Fields</th>
+      <th>Multi-Tenant Scoping</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>User</strong></td>
+      <td><code>id</code>, <code>phone</code> (unique), <code>role</code></td>
+      <td>Matches WhatsApp sender phone directly</td>
+    </tr>
+    <tr>
+      <td><strong>PatientProfile</strong></td>
+      <td><code>id</code>, <code>userId</code>, <code>hospitalId</code>, <code>assignedDoctorId</code></td>
+      <td>Resolves <code>patientId</code> and <code>hospitalId</code></td>
+    </tr>
+    <tr>
+      <td><strong>GlucoseLog</strong></td>
+      <td><code>id</code>, <code>value</code>, <code>context</code>, <code>loggedAt</code></td>
+      <td><code>patientId</code>, <code>hospitalId</code></td>
+    </tr>
+    <tr>
+      <td><strong>InsulinLog</strong></td>
+      <td><code>id</code>, <code>units</code>, <code>insulinType</code>, <code>reason</code></td>
+      <td><code>patientId</code>, <code>hospitalId</code></td>
+    </tr>
+    <tr>
+      <td><strong>PatientDocument</strong></td>
+      <td><code>id</code>, <code>title</code>, <code>fileUrl</code>, <code>mimeType</code></td>
+      <td><code>patientId</code>, <code>hospitalId</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="page-break"></div>
+
+<h2>4. End-to-End System Sequence Diagram</h2>
+<pre>
+[Patient (WhatsApp)]            [Express Webhook]               [Object Storage (S3/R2)]          [PostgreSQL]
+        │                               │                                  │                            │
+        │── 1. Sends "Hi" / Metric ────>│                                  │                            │
+        │                               │── Query User by Phone ───────────────────────────────────────>│
+        │                               │<── Return Patient & Hospital ID ──────────────────────────────│
+        │<── 2. Interactive List Menu ──│                                  │                            │
+        │                               │                                  │                            │
+        │── 3. Selects "Log Glucose" ──>│                                  │                            │
+        │<── 4. Prompt: Enter mg/dL ────│                                  │                            │
+        │── 5. Sends "145" ────────────>│                                  │                            │
+        │<── 6. Buttons: Fasting/Post ──│                                  │                            │
+        │── 7. Taps "Fasting" ─────────>│                                  │                            │
+        │                               │── INSERT INTO GlucoseLog ────────────────────────────────────>│
+        │<── 8. "✅ Saved: 145 mg/dL" ──│                                  │                            │
+        │                               │                                  │                            │
+        │── 9. Uploads Prescription ───>│                                  │                            │
+        │                               │── Fetch Meta CDN Buffer          │                            │
+        │                               │── Stream Binary to S3 ──────────>│                            │
+        │                               │<── Return Permanent S3 URL ──────│                            │
+        │                               │── INSERT INTO PatientDocument ───────────────────────────────>│
+        │<── 10. "✅ Document Saved" ───│                                  │                            │
+</pre>
+
+<h2>5. Ingestion Controller Flow & Verification</h2>
+<pre>
+// routes/whatsapp.routes.js
+import { Router } from 'express';
+import { verifyWebhook, handleWebhook } from '../controllers/whatsapp.controller.js';
+
+const router = Router();
+router.get('/whatsapp', verifyWebhook);
+router.post('/whatsapp', handleWebhook);
+export default router;
+</pre>
+
+<h2>6. Financial Operating Cost in India</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Component</th>
+      <th>Pricing Model</th>
+      <th>Estimated Monthly Cost (500–1000 Patients)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>WhatsApp Inbound Service Chats</strong></td>
+      <td>₹0.00 (Free within 24-hr session)</td>
+      <td>₹0.00</td>
+    </tr>
+    <tr>
+      <td><strong>Outbound Utility Alerts (Cron)</strong></td>
+      <td>~₹0.11 – ₹0.15 per delivered template</td>
+      <td>~₹100 – ₹150 / month</td>
+    </tr>
+    <tr>
+      <td><strong>Cloudflare R2 Storage (Reports/Rx)</strong></td>
+      <td>10 GB Free + ₹0 egress bandwidth</td>
+      <td>₹0.00</td>
+    </tr>
+    <tr>
+      <td><strong>Total Estimated Cost</strong></td>
+      <td>Deterministic Bot Operation</td>
+      <td><strong>~₹100 – ₹200 / month</strong></td>
+    </tr>
+  </tbody>
+</table>
+
+</body>
+</html>
