@@ -37,3 +37,27 @@ export async function createMedicalReportController(req, res) {
   });
 }
 
+/**
+ * Handle listing medical reports for the logged-in patient.
+ */
+export async function listMedicalReportsController(req, res) {
+  const reports = await medicalReportService.getMedicalReports(req.patientProfileId);
+  res.json({
+    success: true,
+    data: reports,
+  });
+}
+
+/**
+ * Handle deleting a medical report.
+ */
+export async function deleteMedicalReportController(req, res) {
+  const { reportId } = req.params;
+  await medicalReportService.deleteMedicalReport(reportId, req.patientProfileId);
+  res.json({
+    success: true,
+    message: "Medical report deleted successfully.",
+  });
+}
+
+
