@@ -779,16 +779,95 @@ function MedicationsTab() {
           </Card>
         </div>
       </div>
-    </div>
-  );
-}
 
+      {/* 3. Detailed Test History Modal */}
+      {selectedTestHistory && (
+        <Modal
+          title={`${selectedTestHistory.testName} History`}
+          onClose={() => setSelectedTestHistory(null)}
+        >
+          <div className="flex flex-col gap-4 mt-2">
+            <p className="text-xs text-muted font-body">
+              All logged entries for <span className="font-semibold text-ink">{selectedTestHistory.testName}</span> (Total: {selectedTestHistory.reports.length})
+            </p>
+            {selectedTestHistory.reports.length === 0 ? (
+              <p className="text-center py-6 text-xs text-muted font-body">No history entries found.</p>
+            ) : (
+              <div className="flex flex-col gap-3 max-h-[350px] overflow-y-auto pr-1">
+                {selectedTestHistory.reports.map((report) => {
+                  const downloadUrl = report.fileUrl ? `${BACKEND_URL}${report.fileUrl}` : null;
+                  return (
+                    <div
+                      key={report.id}
+                      className="border border-border/70 bg-bg/25 rounded-xl p-3.5 flex flex-col gap-2 relative hover:bg-bg/50 transition-colors"
+                    >
+                      <div className="flex justify-between items-start gap-4">
+                        <div>
+                          <div className="font-display text-sm font-bold text-ink">{report.value}</div>
+                          <div className="text-[10px] text-muted font-body mt-0.5">
+                            Date Taken: {new Date(report.dateTaken).toLocaleDateString("en-IN", {
+                              day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
+                            })}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!confirm("Are you sure you want to delete this test record?")) return;
+                            try {
+                              await deleteMedicalReport(report.id);
+                              const updatedReports = selectedTestHistory.reports.filter(r => r.id !== report.id);
+                              setSelectedTestHistory({ ...selectedTestHistory, reports: updatedReports });
+                              await loadData();
+                            } catch (err) {
+                              console.error("Delete report error:", err);
+                              alert("Failed to delete report entry.");
+                            }
+                          }}
+                          className="p-1 border border-border bg-surface text-muted hover:text-critical hover:border-critical/30 rounded-lg shadow-2xs hover:bg-critical-light transition-all"
+                          title="Delete entry"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+
+                      {(report.notes || downloadUrl) && (
+                        <div className="border-t border-border/50 pt-2 mt-1 flex flex-col gap-1.5 text-xs font-body">
+                          {report.notes && (
+                            <p className="text-muted italic text-[11px]">
+                              "{report.notes}"
+                            </p>
+                          )}
+                          {downloadUrl && (
+                            <a
+                              href={downloadUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1.5 w-fit rounded-lg border border-primary/20 bg-primary-light/10 text-primary py-1 px-2.5 text-[10px] font-bold hover:bg-primary-light/20 transition-all mt-1"
+                            >
+                              <FileText size={11} /> View Attachment
+                            </a>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            <div className="flex justify-end mt-2">
+              <Button onClick={() => setSelectedTestHistory(null)} className="w-full sm:w-auto py-2 px-5">
+                Close
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {showCameraModal && (
         <CameraCaptureModal
           onCapture={(capturedFile) => {
             setFile(capturedFile);
-            setCustomName(`Camera_Capture_${new Date().toISOString().slice(0, 10)}`);
             setShowCameraModal(false);
           }}
           onClose={() => setShowCameraModal(false)}
@@ -797,6 +876,7 @@ function MedicationsTab() {
     </div>
   );
 }
+
 
 // Camera Capture Modal
 function CameraCaptureModal({ onCapture, onClose }) {
