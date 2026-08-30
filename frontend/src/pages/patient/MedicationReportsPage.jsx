@@ -450,6 +450,29 @@ function MedicationsTab() {
     }
   };
 
+  const uniqueTestNames = [
+    ...STANDARD_TESTS.map((t) => t.key),
+    ...Array.from(
+      new Set(
+        reports
+          .map((r) => r.testName)
+          .filter(
+            (name) =>
+              !STANDARD_TESTS.some(
+                (st) => st.key.toLowerCase() === name.toLowerCase()
+              )
+          )
+      )
+    ),
+  ];
+
+  const reportsByTest = {};
+  uniqueTestNames.forEach((name) => {
+    reportsByTest[name] = reports
+      .filter((r) => r.testName.toLowerCase() === name.toLowerCase())
+      .sort((a, b) => new Date(b.dateTaken) - new Date(a.dateTaken));
+  });
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center py-20 bg-surface border border-border/80 rounded-card">
@@ -493,13 +516,95 @@ function MedicationsTab() {
         </div>
       </div>
 
-      {/* Placeholders for subsequent checkpoints */}
+      {/* Grid and Upload Form */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Column: Reports Comparison Grid */}
         <div className="lg:col-span-8">
-          <Card className="p-4 text-center text-xs text-muted">
-            Reports Grid placeholder
+          <Card className="border border-border/80 shadow-sm overflow-hidden p-0">
+            <div className="p-4 bg-bg border-b border-border/70 flex justify-between items-center">
+              <h4 className="font-display text-sm font-bold text-ink flex items-center gap-1.5">
+                <FileText size={16} className="text-primary" /> Reports Comparison Grid
+              </h4>
+              <span className="text-[10px] text-muted font-body">Shows last 3 entries chronologically (newest on left)</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-bg/50 border-b border-border/50 text-[10px] font-bold text-muted uppercase tracking-wider font-body">
+                    <th className="p-3 pl-4 min-w-[150px]">Test Type</th>
+                    <th className="p-3">Current Status</th>
+                    <th className="p-3">1st Entry (Newest)</th>
+                    <th className="p-3">2nd Entry</th>
+                    <th className="p-3">3rd Entry</th>
+                    <th className="p-3 pr-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/40 font-body text-xs text-ink">
+                  {uniqueTestNames.map((testKey) => {
+                    const isStandard = STANDARD_TESTS.some(t => t.key.toLowerCase() === testKey.toLowerCase());
+                    const standardConfig = STANDARD_TESTS.find(t => t.key.toLowerCase() === testKey.toLowerCase());
+                    const displayName = standardConfig ? standardConfig.label : testKey;
+                    const testList = reportsByTest[testKey] || [];
+                    const statusInfo = isStandard ? getTestStatus(testKey) : null;
+                    
+                    return (
+                      <tr key={testKey} className="hover:bg-bg/30 transition-colors">
+                        <td className="p-3 pl-4">
+                          <div className="font-bold text-ink">{displayName}</div>
+                          {isStandard ? (
+                            <div className="text-[10px] text-muted">Freq: {standardConfig.frequencyLabel}</div>
+                          ) : (
+                            <span className="text-[9px] bg-bg border border-border/50 px-1 py-0.5 rounded text-muted font-bold">Custom</span>
+                          )}
+                        </td>
+                        <td className="p-3">
+                          {isStandard ? (
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border uppercase tracking-wider ${statusInfo.colorClass}`}>
+                              {statusInfo.status}
+                            </span>
+                          ) : (
+                            <span className="text-muted text-[10px]">N/A</span>
+                          )}
+                        </td>
+                        {[0, 1, 2].map((index) => {
+                          const entry = testList[index];
+                          if (!entry) {
+                            return (
+                              <td key={index} className="p-3 text-muted/50 italic text-[11px]">
+                                —
+                              </td>
+                            );
+                          }
+                          return (
+                            <td key={index} className="p-3">
+                              <div className="font-semibold text-primary">{entry.value}</div>
+                              <div className="text-[10px] text-muted">
+                                {new Date(entry.dateTaken).toLocaleDateString("en-IN", {
+                                  day: "numeric", month: "short", year: "numeric"
+                                })}
+                              </div>
+                            </td>
+                          );
+                        })}
+                        <td className="p-3 pr-4 text-right">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedTestHistory({ testName: displayName, reports: testList })}
+                            className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1.5 border border-border hover:border-primary/30 rounded-lg hover:bg-primary-light text-muted hover:text-primary transition-all ml-auto"
+                          >
+                            History ({testList.length}) <ChevronRight size={11} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </Card>
         </div>
+
+        {/* Right Column: Upload Form Panel */}
         <div className="lg:col-span-4">
           <Card className="p-4 text-center text-xs text-muted">
             Upload Form placeholder
