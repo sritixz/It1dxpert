@@ -86,6 +86,7 @@ model Hospital {
   appointments Appointment[]
   supportTickets SupportTicket[]
   patientDocuments PatientDocument[]
+  medicalReports   MedicalReport[]
 
   @@map("hospitals")
 }
@@ -169,6 +170,7 @@ model PatientProfile {
   patientBadges PatientBadge[]
   appointmentRecords AppointmentRecord[]
   patientDocuments   PatientDocument[]
+  medicalReports     MedicalReport[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
