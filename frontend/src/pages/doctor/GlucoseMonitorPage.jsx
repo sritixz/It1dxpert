@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   ArrowLeft, Droplet, Syringe, UtensilsCrossed, Footprints, StickyNote,
-  FolderOpen, FileText, Eye, Trash2, Upload, Loader2, Calendar
+  FolderOpen, FileText, Eye, Trash2, Upload, Loader2, Calendar, ChevronRight, Activity, Clock, AlertCircle, Check
 } from "lucide-react";
 import {
   ResponsiveContainer, ComposedChart, Line, XAxis, YAxis, CartesianGrid,
@@ -27,9 +27,11 @@ import {
   uploadPrescriptionForPatient, 
   deletePatientDocumentForDoctor 
 } from "../../api/document.api.js";
+import { fetchPatientMedicalReportsForDoctor, deleteMedicalReport } from "../../api/medicalReport.api.js";
 import { exportReportToPdf } from "../../utils/pdfExport.js";
 import { ClinicalRecordModal } from "./AppointmentsPage.jsx";
 import { formatDateTime, formatRelativeTime } from "../../utils/format.js";
+
 
 const RANGE_OPTIONS = [
   { days: 7, label: "7D" },
