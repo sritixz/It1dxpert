@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { 
   FileText, FolderOpen, Upload, Trash2, Calendar, 
-  Check, Loader2, Info, FileCode, Eye, Pill, Plus, Clock, AlertCircle, Sparkles, Trophy, Camera
+  Check, Loader2, Info, FileCode, Eye, Pill, Plus, Clock, AlertCircle, Sparkles, Trophy, Camera, ChevronRight, Activity
 } from "lucide-react";
 import { Card } from "../../components/ui/Card.jsx";
 import { Button } from "../../components/ui/Button.jsx";
@@ -9,6 +9,17 @@ import { Input } from "../../components/ui/Input.jsx";
 import { Modal } from "../../components/ui/Modal.jsx";
 import { fetchPatientDocuments, uploadPatientDocument, deletePatientDocument } from "../../api/document.api.js";
 import { fetchMyAppointments, fetchMedications, createMedication, logMedicationDose, fetchMedicationAdherence } from "../../api/patient.api.js";
+import { fetchMedicalReports, createMedicalReport, deleteMedicalReport } from "../../api/medicalReport.api.js";
+
+const STANDARD_TESTS = [
+  { key: "HbA1c", label: "HbA1c", frequencyDays: 90, frequencyLabel: "Once in 3 months" },
+  { key: "UACR", label: "UACR", frequencyDays: 365, frequencyLabel: "Once in 12 months" },
+  { key: "Thyroid Test", label: "Thyroid test", frequencyDays: 365, frequencyLabel: "Once in 12 months" },
+  { key: "Wheat Allergy", label: "Wheat Allergy", frequencyDays: 730, frequencyLabel: "Once in 24 months" },
+  { key: "Fasting Lipid Profile Test", label: "Fasting lipid Profile Test", frequencyDays: 365, frequencyLabel: "Once in 12 months" },
+  { key: "Fundus Examination", label: "Eye test (Fundus examination)", frequencyDays: 365, frequencyLabel: "Once in 12 months" }
+];
+
 
 const CATEGORIES = [
   { key: "ALL", label: "All Documents" },
