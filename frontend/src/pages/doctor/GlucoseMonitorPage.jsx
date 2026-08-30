@@ -33,6 +33,15 @@ import { ClinicalRecordModal } from "./AppointmentsPage.jsx";
 import { formatDateTime, formatRelativeTime } from "../../utils/format.js";
 
 
+const STANDARD_TESTS = [
+  { key: "HbA1c", label: "HbA1c", frequencyDays: 90, frequencyLabel: "Once in 3 months" },
+  { key: "UACR", label: "UACR", frequencyDays: 365, frequencyLabel: "Once in 12 months" },
+  { key: "Thyroid Test", label: "Thyroid test", frequencyDays: 365, frequencyLabel: "Once in 12 months" },
+  { key: "Wheat Allergy", label: "Wheat Allergy", frequencyDays: 730, frequencyLabel: "Once in 24 months" },
+  { key: "Fasting Lipid Profile Test", label: "Fasting lipid Profile Test", frequencyDays: 365, frequencyLabel: "Once in 12 months" },
+  { key: "Fundus Examination", label: "Eye test (Fundus examination)", frequencyDays: 365, frequencyLabel: "Once in 12 months" }
+];
+
 const RANGE_OPTIONS = [
   { days: 7, label: "7D" },
   { days: 14, label: "14D" },
@@ -102,11 +111,16 @@ export function GlucoseMonitorPage() {
     fetchPatientDocumentsForDoctor(patientId).then(setDocuments).catch(() => {});
   }
 
+  function loadReports() {
+    fetchPatientMedicalReportsForDoctor(patientId).then(setReports).catch(() => {});
+  }
+
   // Patient name/header info only needs fetching once, not on range change.
   useEffect(() => {
     fetchPatientOverview(patientId).catch(() => {}).then((data) => data && setOverview(data));
     loadRecords();
     loadDocuments();
+    loadReports();
   }, [patientId]);
 
   useEffect(() => {
@@ -172,6 +186,67 @@ export function GlucoseMonitorPage() {
       alert("Failed to delete document.");
     }
   };
+
+  const getTestStatus = (testKey) => {
+    const filtered = reports.filter(
+      (r) => r.testName.toLowerCase() === testKey.toLowerCase()
+    );
+    const standard = STANDARD_TESTS.find(
+      (t) => t.key.toLowerCase() === testKey.toLowerCase()
+    );
+    const limit = standard ? standard.frequencyDays : 365;
+
+    if (filtered.length === 0) {
+      return { 
+        status: "Overdue", 
+        text: "Never checked", 
+        colorClass: "text-critical bg-critical-light border-critical/20" 
+      };
+    }
+
+    const newest = filtered[0];
+    const lastDate = new Date(newest.dateTaken);
+    const today = new Date();
+    const diffTime = Math.abs(today - lastDate);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays > limit) {
+      return {
+        status: "Overdue",
+        text: `Overdue (Last: ${lastDate.toLocaleDateString("en-IN")})`,
+        colorClass: "text-critical bg-critical-light border-critical/20"
+      };
+    } else {
+      return {
+        status: "Up to Date",
+        text: `Up to Date (Last: ${lastDate.toLocaleDateString("en-IN")})`,
+        colorClass: "text-success bg-success-light border-success/20"
+      };
+    }
+  };
+
+  const uniqueTestNames = [
+    ...STANDARD_TESTS.map((t) => t.key),
+    ...Array.from(
+      new Set(
+        reports
+          .map((r) => r.testName)
+          .filter(
+            (name) =>
+              !STANDARD_TESTS.some(
+                (st) => st.key.toLowerCase() === name.toLowerCase()
+              )
+          )
+      )
+    ),
+  ];
+
+  const reportsByTest = {};
+  uniqueTestNames.forEach((name) => {
+    reportsByTest[name] = reports
+      .filter((r) => r.testName.toLowerCase() === name.toLowerCase())
+      .sort((a, b) => new Date(b.dateTaken) - new Date(a.dateTaken));
+  });
 
   const chartData = trends?.series.map((point) => ({
     ...point,
@@ -359,6 +434,126 @@ export function GlucoseMonitorPage() {
             )}
           </Card>
 
+          {/* Medical Reports Grid */}
+          <Card className="flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-border/50 pb-3">
+              <div>
+                <p className="font-display text-sm font-bold text-ink">Medical Test Reports Grid & Compliance</p>
+                <p className="font-body text-xs text-muted">Track historical test results and screening compliance frequencies for T1D diagnostics.</p>
+              </div>
+            </div>
+
+            {/* Target Frequencies summary cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {STANDARD_TESTS.map((test) => {
+                const statusInfo = getTestStatus(test.key);
+                return (
+                  <div key={test.key} className="border border-border/80 flex flex-col justify-between p-3.5 gap-2 rounded-xl bg-bg/25">
+                    <div>
+                      <div className="flex justify-between items-start gap-2">
+                        <span className="font-display text-xs font-bold text-ink truncate" title={test.label}>
+                          {test.label}
+                        </span>
+                        <span className={`flex-shrink-0 px-2 py-0.5 rounded-full text-[8px] font-bold border uppercase tracking-wider ${statusInfo.colorClass}`}>
+                          {statusInfo.status}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-muted font-body mt-1">
+                        Requirement: <span className="font-semibold text-ink">{test.frequencyLabel}</span>
+                      </p>
+                    </div>
+                    <div className="text-[9px] font-bold text-muted mt-1.5 border-t border-border/40 pt-1.5 flex items-center gap-1">
+                      <Clock size={10} />
+                      <span>{statusInfo.text}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Reports Comparison Grid Table */}
+            <div className="border border-border/80 rounded-xl overflow-hidden bg-surface">
+              <div className="p-3 bg-bg border-b border-border/70 flex justify-between items-center">
+                <p className="font-display text-xs font-bold text-ink flex items-center gap-1">
+                  <Activity size={14} className="text-primary" /> Reports Comparison Grid
+                </p>
+                <span className="text-[9px] text-muted font-body">Chronological entries (newest on left)</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-bg/50 border-b border-border/50 text-[9px] font-bold text-muted uppercase tracking-wider font-body">
+                      <th className="p-2.5 pl-4 min-w-[150px]">Test Type</th>
+                      <th className="p-2.5">Status</th>
+                      <th className="p-2.5">1st Entry (Newest)</th>
+                      <th className="p-2.5">2nd Entry</th>
+                      <th className="p-2.5">3rd Entry</th>
+                      <th className="p-2.5 pr-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/40 font-body text-xs text-ink">
+                    {uniqueTestNames.map((testKey) => {
+                      const isStandard = STANDARD_TESTS.some(t => t.key.toLowerCase() === testKey.toLowerCase());
+                      const standardConfig = STANDARD_TESTS.find(t => t.key.toLowerCase() === testKey.toLowerCase());
+                      const displayName = standardConfig ? standardConfig.label : testKey;
+                      const testList = reportsByTest[testKey] || [];
+                      const statusInfo = isStandard ? getTestStatus(testKey) : null;
+                      
+                      return (
+                        <tr key={testKey} className="hover:bg-bg/10 transition-colors">
+                          <td className="p-2.5 pl-4">
+                            <div className="font-bold text-ink text-xs">{displayName}</div>
+                            {isStandard ? (
+                              <div className="text-[9px] text-muted">Freq: {standardConfig.frequencyLabel}</div>
+                            ) : (
+                              <span className="text-[8px] bg-bg border border-border/50 px-1 py-0.5 rounded text-muted font-bold font-body">Custom</span>
+                            )}
+                          </td>
+                          <td className="p-2.5">
+                            {isStandard ? (
+                              <span className={`px-1.5 py-0.5 rounded-full text-[8px] font-bold border uppercase tracking-wider ${statusInfo.colorClass}`}>
+                                {statusInfo.status}
+                              </span>
+                            ) : (
+                              <span className="text-muted text-[10px]">—</span>
+                            )}
+                          </td>
+                          {[0, 1, 2].map((index) => {
+                            const entry = testList[index];
+                            if (!entry) {
+                              return (
+                                <td key={index} className="p-2.5 text-muted/50 italic text-[10px]">
+                                  —
+                                </td>
+                              );
+                            }
+                            return (
+                              <td key={index} className="p-2.5">
+                                <div className="font-semibold text-primary text-xs">{entry.value}</div>
+                                <div className="text-[9px] text-muted">
+                                  {new Date(entry.dateTaken).toLocaleDateString("en-IN")}
+                                </div>
+                              </td>
+                            );
+                          })}
+                          <td className="p-2.5 pr-4 text-right">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedTestHistory({ testName: displayName, reports: testList })}
+                              className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-1 border border-border hover:border-primary/30 rounded-lg hover:bg-primary-light text-muted hover:text-primary transition-all ml-auto cursor-pointer"
+                            >
+                              History ({testList.length}) <ChevronRight size={10} />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </Card>
+
           {/* Medical Files & Doctor Prescriptions */}
           <Card>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 border-b border-border/50 pb-3">
@@ -536,6 +731,91 @@ export function GlucoseMonitorPage() {
                 loadRecords();
               }}
             />
+          )}
+
+          {/* Detailed Test History Modal for Doctor */}
+          {selectedTestHistory && (
+            <Modal
+              title={`${selectedTestHistory.testName} History`}
+              onClose={() => setSelectedTestHistory(null)}
+            >
+              <div className="flex flex-col gap-4 mt-2">
+                <p className="text-xs text-muted font-body">
+                  Detailed entry log for <span className="font-semibold text-ink">{selectedTestHistory.testName}</span> (Total: {selectedTestHistory.reports.length})
+                </p>
+                {selectedTestHistory.reports.length === 0 ? (
+                  <p className="text-center py-6 text-xs text-muted font-body">No history records found.</p>
+                ) : (
+                  <div className="flex flex-col gap-3 max-h-[350px] overflow-y-auto pr-1">
+                    {selectedTestHistory.reports.map((report) => {
+                      const BACKEND_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api").replace("/api", "");
+                      const downloadUrl = report.fileUrl ? `${BACKEND_URL}${report.fileUrl}` : null;
+                      return (
+                        <div
+                          key={report.id}
+                          className="border border-border/70 bg-bg/25 rounded-xl p-3 flex flex-col gap-2 relative hover:bg-bg/50 transition-colors"
+                        >
+                          <div className="flex justify-between items-start gap-4">
+                            <div>
+                              <div className="font-display text-sm font-bold text-ink">{report.value}</div>
+                              <div className="text-[10px] text-muted font-body mt-0.5">
+                                Date Taken: {new Date(report.dateTaken).toLocaleDateString("en-IN", {
+                                  day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
+                                })}
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (!confirm("Are you sure you want to delete this test record?")) return;
+                                try {
+                                  await deleteMedicalReport(report.id);
+                                  const updatedReports = selectedTestHistory.reports.filter(r => r.id !== report.id);
+                                  setSelectedTestHistory({ ...selectedTestHistory, reports: updatedReports });
+                                  loadReports();
+                                } catch (err) {
+                                  console.error("Delete report error:", err);
+                                  alert("Failed to delete report entry.");
+                                }
+                              }}
+                              className="p-1.5 border border-border bg-surface text-muted hover:text-critical hover:border-critical/30 rounded-lg shadow-2xs hover:bg-critical-light transition-all cursor-pointer"
+                              title="Delete entry"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+
+                          {(report.notes || downloadUrl) && (
+                            <div className="border-t border-border/50 pt-2 mt-1 flex flex-col gap-1.5 text-xs font-body">
+                              {report.notes && (
+                                <p className="text-muted italic text-[11px]">
+                                  "{report.notes}"
+                                </p>
+                              )}
+                              {downloadUrl && (
+                                <a
+                                  href={downloadUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1.5 w-fit rounded-lg border border-primary/20 bg-primary-light/10 text-primary py-1 px-2.5 text-[10px] font-bold hover:bg-primary-light/20 transition-all mt-1"
+                                >
+                                  <FileText size={11} /> View Attachment
+                                </a>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                <div className="flex justify-end mt-2">
+                  <Button onClick={() => setSelectedTestHistory(null)} className="w-full sm:w-auto py-2 px-5">
+                    Close
+                  </Button>
+                </div>
+              </div>
+            </Modal>
           )}
         </>
       ) : null}
