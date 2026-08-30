@@ -366,7 +366,8 @@ function MedicationsTab() {
 
 // ==========================================
 // 2. Medical Documents Tab Component
-// =========================================function DocumentsTab() {
+// ==========================================
+function DocumentsTab() {
   const [reports, setReports] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
