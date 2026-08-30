@@ -60,4 +60,17 @@ export async function deleteMedicalReportController(req, res) {
   });
 }
 
+/**
+ * Handle listing medical reports for a patient as a doctor.
+ */
+export async function listPatientReportsForDoctorController(req, res) {
+  const { patientId } = req.params;
+  const reports = await medicalReportService.getPatientReportsForDoctor(patientId, req.hospitalId);
+  res.json({
+    success: true,
+    data: reports,
+  });
+}
+
+
 
