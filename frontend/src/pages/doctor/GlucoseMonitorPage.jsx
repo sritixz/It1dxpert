@@ -80,6 +80,10 @@ export function GlucoseMonitorPage() {
   const [apptRecords, setApptRecords] = useState([]);
   const [selectedAptId, setSelectedAptId] = useState(null);
 
+  // Medical reports states
+  const [reports, setReports] = useState([]);
+  const [selectedTestHistory, setSelectedTestHistory] = useState(null);
+
   // Document states
   const [documents, setDocuments] = useState([]);
   const [showUploadForm, setShowUploadForm] = useState(false);
