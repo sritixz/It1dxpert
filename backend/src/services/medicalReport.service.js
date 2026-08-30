@@ -29,3 +29,14 @@ export async function createMedicalReport({
   });
 }
 
+/**
+ * Get all medical test reports belonging to a patient.
+ */
+export async function getMedicalReports(patientId) {
+  return prisma.medicalReport.findMany({
+    where: { patientId },
+    orderBy: { dateTaken: "desc" },
+  });
+}
+
+
