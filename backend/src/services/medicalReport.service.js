@@ -39,4 +39,18 @@ export async function getMedicalReports(patientId) {
   });
 }
 
+/**
+ * Get all medical test reports belonging to a patient for a doctor (scoped to hospital).
+ */
+export async function getPatientReportsForDoctor(patientId, hospitalId) {
+  return prisma.medicalReport.findMany({
+    where: {
+      patientId,
+      hospitalId,
+    },
+    orderBy: { dateTaken: "desc" },
+  });
+}
+
+
 
