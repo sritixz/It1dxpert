@@ -8,3 +8,32 @@ export const medicalReportSchema = z.object({
   dateTaken: z.string().optional(),
   notes: z.string().optional(),
 });
+
+/**
+ * Handle logging a medical report with optional file upload.
+ */
+export async function createMedicalReportController(req, res) {
+  // Validate request body
+  const data = medicalReportSchema.parse(req.body);
+
+  let fileUrl = null;
+  if (req.file) {
+    fileUrl = `/uploads/${req.file.filename}`;
+  }
+
+  const report = await medicalReportService.createMedicalReport({
+    patientId: req.patientProfileId,
+    hospitalId: req.hospitalId,
+    testName: data.testName,
+    value: data.value,
+    dateTaken: data.dateTaken,
+    notes: data.notes,
+    fileUrl,
+  });
+
+  res.status(201).json({
+    success: true,
+    data: report,
+  });
+}
+
