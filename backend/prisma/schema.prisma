@@ -561,3 +561,24 @@ model PatientDocument {
   @@index([appointmentId])
   @@map("patient_documents")
 }
+
+model MedicalReport {
+  id         String   @id @default(uuid())
+  patientId  String
+  patient    PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  hospitalId String
+  hospital   Hospital @relation(fields: [hospitalId], references: [id])
+
+  testName   String   // e.g. "HbA1c", "UACR", "Thyroid Test", "Wheat Allergy", "Fasting Lipid Profile Test", "Fundus Examination" or custom
+  value      String   // E.g., "6.5%" or "Normal"
+  dateTaken  DateTime @default(now()) // The actual date the test was taken
+  notes      String?
+  fileUrl    String?  // Optional uploaded report file URL (from disk uploads)
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([patientId, testName])
+  @@map("medical_reports")
+}
+
