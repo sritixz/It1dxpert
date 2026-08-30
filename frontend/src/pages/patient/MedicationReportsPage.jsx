@@ -450,6 +450,57 @@ function MedicationsTab() {
     }
   };
 
+  const handleFileChange = (e) => {
+    const selectedFile = e.target.files[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+    }
+  };
+
+  const handleUploadSubmit = async (e) => {
+    e.preventDefault();
+    setIsUploading(true);
+    setUploadSuccess(false);
+    setError("");
+
+    const finalTestName = testName === "Other" ? customTestName.trim() : testName;
+    if (!finalTestName) {
+      setError("Please specify the custom test name.");
+      setIsUploading(false);
+      return;
+    }
+
+    if (!value.trim()) {
+      setError("Please specify the test result value.");
+      setIsUploading(false);
+      return;
+    }
+
+    try {
+      await createMedicalReport({
+        testName: finalTestName,
+        value: value.trim(),
+        dateTaken,
+        notes: notes || undefined,
+        file: file || undefined,
+      });
+
+      setUploadSuccess(true);
+      setFile(null);
+      setCustomTestName("");
+      setValue("");
+      setNotes("");
+      
+      await loadData();
+      setTimeout(() => setUploadSuccess(false), 3000);
+    } catch (err) {
+      console.error("Upload error:", err);
+      setError(err.response?.data?.message || "Failed to log medical report.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const uniqueTestNames = [
     ...STANDARD_TESTS.map((t) => t.key),
     ...Array.from(
@@ -606,8 +657,125 @@ function MedicationsTab() {
 
         {/* Right Column: Upload Form Panel */}
         <div className="lg:col-span-4">
-          <Card className="p-4 text-center text-xs text-muted">
-            Upload Form placeholder
+          <Card className="border border-border/80 shadow-sm p-4">
+            <h3 className="font-display text-sm font-bold text-ink mb-4 flex items-center gap-1.5">
+              <Upload size={16} className="text-primary" /> Upload Test Result
+            </h3>
+            
+            <form onSubmit={handleUploadSubmit} className="flex flex-col gap-3.5">
+              {/* Test Select */}
+              <div>
+                <label className="mb-1 block font-body text-xs font-semibold text-ink font-body">Select Test Type</label>
+                <select
+                  value={testName}
+                  onChange={(e) => {
+                    setTestName(e.target.value);
+                    if (e.target.value !== "Other") {
+                      setCustomTestName("");
+                    }
+                  }}
+                  className="w-full rounded-lg border border-border bg-bg px-3.5 py-2 font-body text-xs text-ink outline-none focus:border-primary shadow-xs transition-colors cursor-pointer"
+                >
+                  {STANDARD_TESTS.map((t) => (
+                    <option key={t.key} value={t.key}>
+                      {t.label}
+                    </option>
+                  ))}
+                  <option value="Other">Other (Custom Test)</option>
+                </select>
+              </div>
+
+              {/* Conditional Custom Name */}
+              {testName === "Other" && (
+                <Input
+                  label="Custom Test Name"
+                  value={customTestName}
+                  onChange={(e) => setCustomTestName(e.target.value)}
+                  placeholder="e.g. Vitamin D Test"
+                  required
+                />
+              )}
+
+              {/* Result Value */}
+              <Input
+                label="Result Value"
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                placeholder="e.g. 6.5%, 15 mg/g, Normal"
+                required
+              />
+
+              {/* Date Taken */}
+              <div>
+                <label className="mb-1 block font-body text-xs font-semibold text-ink font-body">Date Taken</label>
+                <input
+                  type="date"
+                  value={dateTaken}
+                  onChange={(e) => setDateTaken(e.target.value)}
+                  className="w-full rounded-lg border border-border bg-bg px-3.5 py-2 font-body text-xs text-ink outline-none focus:border-primary shadow-xs transition-colors cursor-pointer"
+                  required
+                />
+              </div>
+
+              {/* File Upload Attachment */}
+              <div className="flex flex-col gap-1.5 font-body">
+                <label className="text-xs font-semibold text-ink">Attach Document (Optional)</label>
+                <div className="border border-border bg-bg/50 rounded-lg p-3 text-center relative hover:bg-bg cursor-pointer transition-all">
+                  <input
+                    type="file"
+                    onChange={handleFileChange}
+                    accept=".pdf,image/*"
+                    className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                  />
+                  <Upload size={18} className="text-muted mx-auto mb-1" />
+                  <span className="block text-[11px] font-semibold text-ink truncate">
+                    {file ? file.name : "Select PDF or Image..."}
+                  </span>
+                  <span className="text-[9px] text-muted block mt-0.5">PDF, PNG, JPG up to 10MB</span>
+                </div>
+
+                <div className="text-center text-[10px] text-muted font-semibold my-1">OR</div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowCameraModal(true)}
+                  className="flex items-center justify-center gap-1.5 rounded-lg border border-primary/20 bg-primary-light/10 text-primary py-2 text-xs font-bold hover:bg-primary-light/20 transition-all"
+                >
+                  <Camera size={14} /> Take Photo with Camera
+                </button>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="mb-1 block font-body text-xs font-semibold text-ink font-body">Notes / Observations</label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="e.g. Fasting since 10 PM last night"
+                  rows={3}
+                  className="w-full rounded-lg border border-border bg-bg px-3.5 py-2 font-body text-xs text-ink outline-none focus:border-primary shadow-xs transition-colors resize-none"
+                />
+              </div>
+
+              {error && (
+                <div className="flex items-center gap-1.5 p-2 rounded-lg border border-critical/30 bg-critical-light text-critical text-[10px] font-semibold font-body">
+                  <AlertCircle size={12} />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              {uploadSuccess && (
+                <div className="flex items-center gap-1.5 p-2 rounded-lg border border-success/30 bg-success-light text-success text-[10px] font-semibold animate-pulse font-body">
+                  <Check size={12} strokeWidth={3} />
+                  <span>Report logged successfully!</span>
+                </div>
+              )}
+
+              <Button type="submit" isLoading={isUploading} className="w-full py-2.5 rounded-xl font-bold flex items-center justify-center">
+                {!isUploading && <Upload size={14} className="mr-1" />}
+                {isUploading ? "Logging..." : "Log Test Result"}
+              </Button>
+            </form>
           </Card>
         </div>
       </div>
