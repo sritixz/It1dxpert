@@ -9,6 +9,12 @@ import { authenticate } from "../middleware/authenticate.js";
 import { authorize } from "../middleware/authorize.js";
 import { scopeToHospital } from "../middleware/scopeToHospital.js";
 import { attachPatientProfile } from "../middleware/attachProfile.js";
+import { upload } from "../middleware/upload.js";
+import {
+  createMedicalReportController,
+  listMedicalReportsController,
+  deleteMedicalReportController,
+} from "../controllers/medicalReport.controller.js";
 import {
   logGlucoseController,
   updateGlucoseLogController,
@@ -75,6 +81,11 @@ router.post("/medications", asyncHandler(createMedicationController));
 router.get("/medications", asyncHandler(listMedicationsController));
 router.post("/medications/dose", asyncHandler(logDoseController));
 router.get("/medications/adherence", asyncHandler(getAdherenceController));
+
+// Medical Reports
+router.post("/medical-reports", upload.single("file"), asyncHandler(createMedicalReportController));
+router.get("/medical-reports", asyncHandler(listMedicalReportsController));
+router.delete("/medical-reports/:reportId", asyncHandler(deleteMedicalReportController));
 
 // Gamification — streak + earned badges, for whatever UI surfaces them
 router.get("/gamification", asyncHandler(getGamificationStatusController));
