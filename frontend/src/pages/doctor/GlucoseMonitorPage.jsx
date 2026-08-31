@@ -15,6 +15,8 @@ import {
   Tooltip, ReferenceArea, ReferenceLine,
 } from "recharts";
 import { Card } from "../../components/ui/Card.jsx";
+import { Button } from "../../components/ui/Button.jsx";
+import { Modal } from "../../components/ui/Modal.jsx";
 import { 
   fetchPatientOverview, 
   fetchPatientGlucoseTrends, 
