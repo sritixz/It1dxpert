@@ -10,27 +10,37 @@ export default {
       // from the CSS variables over time.
       // -----------------------------------------------------------------
       colors: {
-        bg: "#F6F8FB",
-        surface: "#FFFFFF",
-        ink: "#16233A",
-        muted: "#5B6B82",
-        border: "#E2E8F0",
+        bg: "#8C6E58",
+        surface: "#4A3525",
+        surfaceInset: "#3D2B1F",
+        ink: "#F4EDE4",
+        muted: "#C4A48A",
+        border: "rgba(255,255,255,0.08)",
         primary: {
-          DEFAULT: "#2B6CB0",
-          dark: "#1E4E85",
-          light: "#EAF2FB",
+          DEFAULT: "#1E6B65",
+          dark: "#154F4B",
+          light: "#20403C",
+        },
+        accent: {
+          DEFAULT: "#E07A5F",
+          dark: "#C15A40",
+          light: "#4A2E22",
         },
         success: {
-          DEFAULT: "#2F9E6E",
-          light: "#E7F6EF",
+          DEFAULT: "#4EBA87",
+          light: "#1E3A2C",
         },
         warning: {
-          DEFAULT: "#C2831F",
-          light: "#FBF1DF",
+          DEFAULT: "#F59E0B",
+          light: "#4A3311",
         },
         critical: {
-          DEFAULT: "#C4432E",
-          light: "#FAEAE7",
+          DEFAULT: "#EF4444",
+          light: "#4A1F1F",
+        },
+        info: {
+          DEFAULT: "#38BDF8",
+          light: "#1B3A4A",
         },
       },
       fontFamily: {

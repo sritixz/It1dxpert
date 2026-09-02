@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { 
   Droplet, Syringe, UtensilsCrossed, Footprints, Flame, Award, 
-  Plus, Check, X, Loader2, ChevronRight, AlertCircle, Sparkles, Upload, Calendar, FileText
+  Plus, Check, X, Loader2, ChevronRight, AlertCircle, Sparkles, Upload, Calendar, FileText,
+  TrendingUp, TrendingDown, Minus, Target
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card } from "../../components/ui/Card.jsx";
@@ -376,21 +377,28 @@ export function PatientDashboardPlaceholder() {
 
   const glucoseStyles = getGlucoseStatusStyles(latestGlucose?.value);
 
+  // Trend vs the previous glucose reading today (or most recent prior one)
+  const previousGlucose = dailyLog?.glucose?.length > 1
+    ? dailyLog.glucose[dailyLog.glucose.length - 2]
+    : null;
+  const glucoseTrend = latestGlucose && previousGlucose
+    ? latestGlucose.value - previousGlucose.value
+    : null;
+
+  // 7-day Time-in-Range % (70-180 mg/dL), computed client-side from data
+  // already fetched for the logbook grid below — no extra API call needed.
+  const allWeekGlucose = sevenDayReport?.logs?.glucose || [];
+  const inRangeCount = allWeekGlucose.filter(g => g.value >= 70 && g.value <= 180).length;
+  const timeInRangePercent = allWeekGlucose.length > 0
+    ? Math.round((inRangeCount / allWeekGlucose.length) * 100)
+    : null;
+
   // --- Digital Notebook Logbook Table Helpers ---
-  const TIME_SLOTS = [
-    { id: "7_00_am_glucose", label: "7:00 AM", subLabel: "Glucose", type: "glucose", targetHour: 7, targetMin: 0 },
-    { id: "7_05_am_bolus", label: "7:05 AM", subLabel: "Bolus Dose", type: "insulin", targetHour: 7, targetMin: 5 },
-    { id: "7_15_am_meal", label: "7:15 AM", subLabel: "Meal", type: "meal", targetHour: 7, targetMin: 15 },
-    { id: "9_15_am_glucose", label: "9:15 AM", subLabel: "Glucose check", type: "glucose", targetHour: 9, targetMin: 15 },
-    { id: "12_30_pm_glucose", label: "12:30 PM", subLabel: "Glucose check", type: "glucose", targetHour: 12, targetMin: 30 },
-    { id: "12_35_pm_bolus", label: "12:35 PM", subLabel: "Bolus Insulin", type: "insulin", targetHour: 12, targetMin: 35 },
-    { id: "12_45_pm_meal", label: "12:45 PM", subLabel: "Meal", type: "meal", targetHour: 12, targetMin: 45 },
-    { id: "3_45_pm_glucose", label: "3:45 PM", subLabel: "Glucose check", type: "glucose", targetHour: 15, targetMin: 45 },
-    { id: "7_00_pm_glucose", label: "7:00 PM", subLabel: "Glucose", type: "glucose", targetHour: 19, targetMin: 0 },
-    { id: "7_05_pm_insulin", label: "7:05 PM", subLabel: "Meal Insulin", type: "insulin", targetHour: 19, targetMin: 5 },
-    { id: "7_15_pm_meal", label: "7:15 PM", subLabel: "Meal", type: "meal", targetHour: 19, targetMin: 15 },
-    { id: "10_00_pm_glucose", label: "10:00 PM", subLabel: "Glucose", type: "glucose", targetHour: 22, targetMin: 0 },
-    { id: "10_05_pm_insulin", label: "10:05 PM", subLabel: "Insulin", type: "insulin", targetHour: 22, targetMin: 5 }
+  const LOG_TYPE_COLUMNS = [
+    { type: "glucose", label: "Glucose", icon: Droplet, colorClass: "text-primary bg-primary-light border-primary/20" },
+    { type: "insulin", label: "Insulin", icon: Syringe, colorClass: "text-critical bg-critical-light border-critical/20" },
+    { type: "meal", label: "Meals", icon: UtensilsCrossed, colorClass: "text-warning bg-warning-light border-warning/20" },
+    { type: "activity", label: "Activity", icon: Footprints, colorClass: "text-success bg-success-light border-success/20" },
   ];
 
   const getLast7Dates = () => {
@@ -407,181 +415,133 @@ export function PatientDashboardPlaceholder() {
     const dateGlucose = (sevenDayReport?.logs?.glucose || []).filter(g => g.loggedAt.startsWith(dateStr));
     const dateInsulin = (sevenDayReport?.logs?.insulin || []).filter(i => i.loggedAt.startsWith(dateStr));
     const dateMeals = (sevenDayReport?.logs?.meals || []).filter(m => m.loggedAt.startsWith(dateStr));
-    return { glucose: dateGlucose, insulin: dateInsulin, meals: dateMeals };
+    const dateActivity = (sevenDayReport?.logs?.activity || []).filter(a => a.loggedAt.startsWith(dateStr));
+    return { glucose: dateGlucose, insulin: dateInsulin, meals: dateMeals, activity: dateActivity };
   };
 
-  const mapLogsToSlots = (dateLogs) => {
-    const rowData = {};
-    TIME_SLOTS.forEach(slot => {
-      rowData[slot.id] = null;
-    });
-
-    const mapTypeLogs = (logs, type) => {
-      logs.forEach(log => {
-        const logDate = new Date(log.loggedAt);
-        const logHour = logDate.getHours();
-        const logMin = logDate.getMinutes();
-        const logTimeInMinutes = logHour * 60 + logMin;
-
-        let closestSlot = null;
-        let minDiff = Infinity;
-
-        TIME_SLOTS.filter(s => s.type === type).forEach(slot => {
-          const slotTimeInMinutes = slot.targetHour * 60 + slot.targetMin;
-          const diff = Math.abs(logTimeInMinutes - slotTimeInMinutes);
-          if (diff < minDiff && diff <= 120) {
-            minDiff = diff;
-            closestSlot = slot;
-          }
-        });
-
-        if (closestSlot) {
-          const existing = rowData[closestSlot.id];
-          if (!existing || minDiff < existing.diff) {
-            rowData[closestSlot.id] = { log, diff: minDiff };
-          }
-        }
-      });
+  // Each entry keeps its own real loggedAt — nothing is snapped to a fixed
+  // clock-time slot. Multiple readings on the same day for the same type
+  // just render as multiple chips, sorted chronologically, each showing the
+  // actual time it was logged. New entries appear here automatically the
+  // next time sevenDayReport reloads (see loadData / handleSubmit).
+  const groupLogsByType = (dateLogs) => {
+    const sortByTime = (arr) => [...arr].sort((a, b) => new Date(a.loggedAt) - new Date(b.loggedAt));
+    return {
+      glucose: sortByTime(dateLogs.glucose || []),
+      insulin: sortByTime(dateLogs.insulin || []),
+      meal: sortByTime(dateLogs.meals || []),
+      activity: sortByTime(dateLogs.activity || []),
     };
-
-    mapTypeLogs(dateLogs.glucose || [], "glucose");
-    mapTypeLogs(dateLogs.insulin || [], "insulin");
-    mapTypeLogs(dateLogs.meals || [], "meal");
-
-    return rowData;
   };
 
   return (
     <div className="flex flex-col gap-6">
-      {/* 1. Header Greeting & Quick Actions */}
-      <div className="flex flex-col lg:flex-row justify-between items-stretch gap-6 p-6 rounded-2xl bg-surface border border-border/80 shadow-sm relative overflow-hidden">
-        {/* Background decorative gradient */}
-        <div className="absolute top-0 right-0 h-32 w-32 bg-radial from-primary/5 to-transparent rounded-full -mr-10 -mt-10 pointer-events-none" />
+      {/* 1. At-a-Glance Hero Banner — dark cocoa surface, teal-to-coral gradient border stroke */}
+      <div className="rounded-2xl bg-gradient-to-br from-primary to-accent p-[1.5px] shadow-float">
+        <div className="relative overflow-hidden rounded-2xl bg-surfaceInset p-6 lg:p-7">
+          <div className="relative z-10 flex flex-col gap-6">
+            {/* Greeting row */}
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="font-display text-2xl font-black text-ink tracking-tight">
+                    Welcome back{user?.patientProfile?.fullName ? `, ${user.patientProfile.fullName.split(" ")[0]}` : ""} 👋
+                  </h2>
+                  <span className="px-2.5 py-0.5 text-[9px] font-black tracking-wider uppercase rounded-full bg-primary-light text-primary border border-primary/30">
+                    {newPatient ? "New Patient Plan" : "Maintenance Plan"}
+                  </span>
+                </div>
+                <p className="font-body text-sm text-muted mt-1">
+                  Here's your summary for <span className="font-semibold text-ink">{displayDateStr}</span>
+                  {user?.patientProfile?.assignedDoctor && (
+                    <> · Dr. {user.patientProfile.assignedDoctor.fullName}</>
+                  )}
+                </p>
+              </div>
 
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 z-10">
-          {/* Relocated Circular Progress Widget */}
-          <div className="flex items-center gap-3 bg-bg/50 border border-border/40 rounded-xl p-3 shadow-2xs min-w-[165px]">
-            <div className="relative flex items-center justify-center h-14 w-14">
-              <svg className="w-14 h-14 transform -rotate-90">
-                <circle
-                  cx="28"
-                  cy="28"
-                  r={radius}
-                  className="stroke-border/40"
-                  strokeWidth="3.5"
-                  fill="transparent"
-                />
-                <motion.circle
-                  cx="28"
-                  cy="28"
-                  r={radius}
-                  className={
-                    progressPercent === 100 
-                      ? "stroke-success" 
-                      : progressPercent >= 50
-                      ? "stroke-primary"
-                      : "stroke-warning"
-                  }
-                  strokeWidth="3.5"
-                  fill="transparent"
-                  strokeDasharray={circumference}
-                  initial={{ strokeDashoffset: circumference }}
-                  animate={{ strokeDashoffset }}
-                  transition={{ duration: 0.8, ease: "easeOut" }}
-                  strokeLinecap="round"
-                />
-              </svg>
-              <span className="absolute font-display text-xs font-black text-ink">
-                {progressPercent}%
-              </span>
+              <button 
+                onClick={handleExportPdf}
+                disabled={isExporting}
+                className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary hover:bg-primary-dark text-white font-body text-xs font-bold transition-all cursor-pointer disabled:opacity-50 self-start lg:self-center"
+              >
+                {isExporting ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
+                {isExporting ? "Generating..." : "Export 7-Day PDF"}
+              </button>
             </div>
-            <div className="flex flex-col">
-              <span className="font-body text-xs font-bold text-ink">Daily Progress</span>
-              <span className="text-[10px] text-muted font-bold mt-0.5">{loggedCount}/4 metrics</span>
-              <span className={`text-[9px] font-extrabold uppercase mt-1 px-1.5 py-0.5 rounded border self-start ${
-                progressPercent === 100 
-                  ? "bg-success-light text-success border-success/20" 
-                  : "bg-surface text-muted border-border"
-              }`}>
-                {progressPercent === 100 ? "Complete" : "Logging"}
-              </span>
+
+            {/* At-a-Glance stat strip — the actual "patient at a glance" view */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* Latest Glucose + trend */}
+              <div className="bg-surface border border-border rounded-xl p-3.5">
+                <div className="flex items-center gap-1.5 text-muted text-[10px] font-bold uppercase tracking-wide">
+                  <Droplet size={12} /> Latest Glucose
+                </div>
+                <div className="flex items-end gap-1.5 mt-1.5">
+                  <span className="numeral text-2xl font-black text-ink">
+                    {latestGlucose ? latestGlucose.value : "—"}
+                  </span>
+                  {latestGlucose && <span className="text-[10px] text-muted font-semibold mb-1">mg/dL</span>}
+                  {glucoseTrend !== null && (
+                    <span className={`flex items-center gap-0.5 text-[10px] font-bold mb-1 ${glucoseTrend > 0 ? "text-warning" : glucoseTrend < 0 ? "text-success" : "text-muted"}`}>
+                      {glucoseTrend > 0 ? <TrendingUp size={11} /> : glucoseTrend < 0 ? <TrendingDown size={11} /> : <Minus size={11} />}
+                      {Math.abs(glucoseTrend)}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* 7-Day Time in Range */}
+              <div className="bg-surface border border-border rounded-xl p-3.5">
+                <div className="flex items-center gap-1.5 text-muted text-[10px] font-bold uppercase tracking-wide">
+                  <Target size={12} /> Time in Range (7d)
+                </div>
+                <div className="flex items-end gap-1.5 mt-1.5">
+                  <span className="numeral text-2xl font-black text-ink">
+                    {timeInRangePercent !== null ? `${timeInRangePercent}%` : "—"}
+                  </span>
+                  <span className="text-[10px] text-muted font-semibold mb-1">70–180 mg/dL</span>
+                </div>
+              </div>
+
+              {/* Streak */}
+              <div className="bg-surface border border-border rounded-xl p-3.5">
+                <div className="flex items-center gap-1.5 text-muted text-[10px] font-bold uppercase tracking-wide">
+                  <Flame size={12} /> Current Streak
+                </div>
+                <div className="flex items-end gap-1.5 mt-1.5">
+                  <span className="numeral text-2xl font-black text-ink">
+                    {gamification?.streak?.currentStreak || 0}
+                  </span>
+                  <span className="text-[10px] text-muted font-semibold mb-1">days</span>
+                </div>
+              </div>
+
+              {/* Today's Progress ring */}
+              <div className="bg-surface border border-border rounded-xl p-3.5 flex items-center gap-3">
+                <div className="relative flex items-center justify-center h-11 w-11 shrink-0">
+                  <svg className="w-11 h-11 transform -rotate-90">
+                    <circle cx="22" cy="22" r={radius} className="stroke-border" strokeWidth="3.5" fill="transparent" />
+                    <motion.circle
+                      cx="22" cy="22" r={radius}
+                      className="stroke-primary"
+                      strokeWidth="3.5"
+                      fill="transparent"
+                      strokeDasharray={circumference}
+                      initial={{ strokeDashoffset: circumference }}
+                      animate={{ strokeDashoffset }}
+                      transition={{ duration: 0.8, ease: "easeOut" }}
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <span className="absolute font-display text-[10px] font-black text-ink">{progressPercent}%</span>
+                </div>
+                <div>
+                  <div className="text-muted text-[10px] font-bold uppercase tracking-wide">Today's Progress</div>
+                  <div className="text-ink text-xs font-bold mt-0.5">{loggedCount}/4 metrics</div>
+                </div>
+              </div>
             </div>
           </div>
-
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="font-display text-2xl font-black text-ink tracking-tight">
-                Welcome back{user?.patientProfile?.fullName ? `, ${user.patientProfile.fullName.split(" ")[0]}` : ""} 👋
-              </h2>
-              <span className={`px-2.5 py-0.5 text-[9px] font-black tracking-wider uppercase rounded-full border shadow-3xs ${
-                newPatient 
-                  ? "bg-primary-light text-primary border-primary/20" 
-                  : "bg-teal-50 text-teal-600 border-teal-100/50"
-              }`}>
-                {newPatient ? "New Patient Plan" : "Maintenance Plan"}
-              </span>
-            </div>
-            <p className="font-body text-sm text-muted mt-1">
-              Here's your summary for <span className="font-semibold text-ink">{displayDateStr}</span>
-            </p>
-            {/* Metadata badges */}
-            <div className="flex flex-wrap gap-2 mt-2.5 font-body text-xs text-muted">
-              <span className="px-2.5 py-1 rounded-lg bg-bg border border-border/50 shadow-3xs">
-                Patient: <strong className="text-ink">{user?.patientProfile?.fullName}</strong>
-              </span>
-              {user?.patientProfile?.assignedDoctor && (
-                <span className="px-2.5 py-1 rounded-lg bg-bg border border-border/50 shadow-3xs">
-                  Doctor: <strong className="text-ink">Dr. {user.patientProfile.assignedDoctor.fullName}</strong>
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Log Buttons */}
-        <div className="flex flex-wrap gap-2 z-10 lg:self-center lg:justify-end flex-1 max-w-full">
-          <button 
-            onClick={() => openLogModal("glucose")} 
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary-light text-primary hover:bg-primary hover:text-white font-body text-xs font-semibold transition-all shadow-sm"
-          >
-            <Plus size={14} /> Log Glucose
-          </button>
-          <button 
-            onClick={() => openLogModal("insulin")} 
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-critical-light text-critical hover:bg-critical hover:text-white font-body text-xs font-semibold transition-all shadow-sm"
-          >
-            <Plus size={14} /> Log Insulin
-          </button>
-          <button 
-            onClick={() => openLogModal("meal")} 
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-warning-light text-warning hover:bg-warning hover:text-white font-body text-xs font-semibold transition-all shadow-sm"
-          >
-            <Plus size={14} /> Log Meals
-          </button>
-          <button 
-            onClick={() => openLogModal("activity")} 
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-success-light text-success hover:bg-success hover:text-white font-body text-xs font-semibold transition-all shadow-sm"
-          >
-            <Plus size={14} /> Log Activity
-          </button>
-          <button 
-            onClick={() => openLogModal("ai-scan")} 
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white font-body text-xs font-semibold transition-all shadow-sm border border-indigo-100/50 cursor-pointer"
-          >
-            <Sparkles size={14} /> AI Smart Log
-          </button>
-          <button 
-            onClick={handleExportPdf}
-            disabled={isExporting}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-teal-50 text-teal-600 hover:bg-teal-600 hover:text-white font-body text-xs font-semibold transition-all shadow-sm border border-teal-100/50 cursor-pointer disabled:opacity-50"
-          >
-            {isExporting ? (
-              <Loader2 size={14} className="animate-spin" />
-            ) : (
-              <FileText size={14} />
-            )}
-            {isExporting ? "Generating..." : "Export 7-Day PDF"}
-          </button>
         </div>
       </div>
 
@@ -609,7 +569,7 @@ export function PatientDashboardPlaceholder() {
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="font-display text-base font-bold text-ink">Daily Checklist</h3>
-                    <p className="text-xs text-muted mt-0.5">Click on incomplete metrics to quickly log details.</p>
+                    <p className="text-xs text-muted mt-0.5">A quick view of what's been logged today.</p>
                   </div>
                   {progressPercent === 100 && (
                     <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-success-light text-success font-body text-xs font-bold shadow-sm border border-success/20 animate-pulse">
@@ -619,18 +579,17 @@ export function PatientDashboardPlaceholder() {
                 </div>
               </div>
 
-              {/* Progress Checklist Grid */}
+              {/* Progress Checklist Grid — at-a-glance status, not an entry point */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
                 {checklist.map((item) => {
                   const Icon = item.icon;
                   return (
                     <div 
                       key={item.id}
-                      onClick={() => !item.status && openLogModal(item.id)}
-                      className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all cursor-pointer ${
+                      className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${
                         item.status 
                           ? "bg-surface border-success/30 shadow-sm" 
-                          : "bg-bg/40 border-border/50 hover:bg-bg hover:border-border hover:shadow-xs"
+                          : "bg-bg/40 border-border/50"
                       }`}
                     >
                       <div className={`p-2 rounded-lg mb-1.5 ${item.color}`}>
@@ -648,8 +607,8 @@ export function PatientDashboardPlaceholder() {
                             <Check size={12} strokeWidth={3} />
                           </span>
                         ) : (
-                          <span className="flex items-center gap-0.5 px-2 py-0.5 rounded-full border border-border text-[9px] font-bold text-muted bg-surface">
-                            <Plus size={8} /> Log
+                          <span className="px-2 py-0.5 rounded-full border border-border text-[9px] font-bold text-muted bg-surface">
+                            Pending
                           </span>
                         )}
                       </div>
@@ -813,7 +772,7 @@ export function PatientDashboardPlaceholder() {
                 <h3 className="font-display text-base font-bold text-ink flex items-center gap-1.5">
                   <Calendar size={18} className="text-primary" /> Daily Logbook Grid
                 </h3>
-                <p className="text-xs text-muted mt-0.5">Chronological records snapped to standard daily routine times.</p>
+                <p className="text-xs text-muted mt-0.5">Every entry shows the real time it was logged — updates live as you log.</p>
               </div>
               <span className="text-[10px] font-extrabold uppercase tracking-wider text-muted bg-surface px-2.5 py-1 rounded-lg border border-border shadow-3xs">
                 Past 7 Days
@@ -821,39 +780,34 @@ export function PatientDashboardPlaceholder() {
             </div>
 
             <div className="overflow-x-auto max-w-full relative">
-              {/* Notebook left margin vertical rule */}
-              <div className="absolute top-0 bottom-0 left-[119px] w-[2px] bg-red-400 opacity-60 z-10 pointer-events-none" />
-              
-              <table className="w-full text-left border-collapse min-w-[1250px] font-body text-xs relative z-0">
+              <table className="w-full text-left border-collapse min-w-[900px] font-body text-xs relative z-0">
                 <thead>
                   <tr className="bg-bg/40 border-b border-border/80">
                     <th className="p-3.5 pl-5 font-bold text-ink w-[120px] bg-surface sticky left-0 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.02)] border-r border-border/60">Date</th>
-                    {TIME_SLOTS.map(slot => (
-                      <th key={slot.id} className="p-3 font-semibold text-muted text-center border-r border-border/40 min-w-[95px] select-none">
-                        <div className="text-[10px] font-bold text-ink">{slot.label}</div>
-                        <div className={`text-[8px] font-black uppercase tracking-wider mt-1 px-1.5 py-0.2 rounded border inline-block select-none ${
-                          slot.type === "glucose" ? "bg-primary-light text-primary border-primary/20" :
-                          slot.type === "insulin" ? "bg-critical-light text-critical border-critical/20" :
-                          "bg-warning-light text-warning border-warning/20"
-                        }`}>
-                          {slot.subLabel}
-                        </div>
-                      </th>
-                    ))}
+                    {LOG_TYPE_COLUMNS.map(col => {
+                      const ColIcon = col.icon;
+                      return (
+                        <th key={col.type} className="p-3 font-semibold text-muted text-left border-r border-border/40 min-w-[180px] select-none">
+                          <div className="flex items-center gap-1.5 text-[11px] font-bold text-ink">
+                            <ColIcon size={13} /> {col.label}
+                          </div>
+                        </th>
+                      );
+                    })}
                   </tr>
                 </thead>
                 <tbody>
                   {getLast7Dates().map((dateStr) => {
                     const dateLogs = getLogsForDate(dateStr);
-                    const slotsData = mapLogsToSlots(dateLogs);
+                    const grouped = groupLogsByType(dateLogs);
                     const displayDate = new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", {
                       month: "short",
                       day: "numeric",
                       weekday: "short"
                     });
-                    
+
                     return (
-                      <tr key={dateStr} className="hover:bg-bg/20 border-b border-border/30 transition-colors">
+                      <tr key={dateStr} className="hover:bg-bg/20 border-b border-border/30 transition-colors align-top">
                         {/* Sticky Date Column */}
                         <td className="p-3.5 pl-5 font-bold text-ink bg-surface sticky left-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.02)] border-r border-border/60">
                           <div className="font-display font-bold text-ink">{displayDate}</div>
@@ -861,48 +815,56 @@ export function PatientDashboardPlaceholder() {
                             {dateStr.split("-").reverse().join("/")}
                           </div>
                         </td>
-                        
-                        {TIME_SLOTS.map(slot => {
-                          const entry = slotsData[slot.id];
-                          if (!entry) {
+
+                        {LOG_TYPE_COLUMNS.map(col => {
+                          const entries = grouped[col.type];
+                          if (!entries || entries.length === 0) {
                             return (
-                              <td key={slot.id} className="p-3 text-center text-muted/30 font-medium border-r border-border/30 select-none">
+                              <td key={col.type} className="p-3 text-muted/30 font-medium border-r border-border/30 select-none">
                                 —
                               </td>
                             );
                           }
-                          
-                          const { log } = entry;
-                          const logTimeStr = new Date(log.loggedAt).toLocaleTimeString("en-US", {
-                            hour: "2-digit",
-                            minute: "2-digit"
-                          });
-
-                          let content = "";
-                          let styleClass = "";
-                          let tooltipTitle = "";
-
-                          if (slot.type === "glucose") {
-                            content = `${log.value}`;
-                            const isNormal = log.value >= 70 && log.value <= 180;
-                            styleClass = isNormal 
-                              ? "bg-success-light text-success border-success/30 font-bold" 
-                              : "bg-critical-light text-critical border-critical/30 font-bold animate-pulse";
-                            tooltipTitle = `Glucose: ${log.value} mg/dL (${log.context || 'Other'}) at ${logTimeStr}`;
-                          } else if (slot.type === "insulin") {
-                            content = `${log.units}u`;
-                            styleClass = "bg-critical-light text-critical border-critical/30 font-semibold";
-                            tooltipTitle = `Insulin: ${log.units} units of ${log.insulinType || 'Lispro'} for ${log.reason || 'Meal'} at ${logTimeStr}`;
-                          } else if (slot.type === "meal") {
-                            content = `${log.carbs}g`;
-                            styleClass = "bg-warning-light text-warning border-warning/30 font-semibold";
-                            tooltipTitle = `Meal: ${log.carbs}g carbs (${log.mealType || 'Lunch'}) ${log.notes ? `- ${log.notes}` : ''} at ${logTimeStr}`;
-                          }
 
                           return (
-                            <td key={slot.id} className="p-3 text-center border-r border-border/30" title={tooltipTitle}>
-                              <div className={`inline-block px-2.5 py-1 rounded-lg border text-[11px] shadow-3xs cursor-default ${styleClass}`}>
-                                {content}
+                            <td key={col.type} className="p-3 border-r border-border/30">
+                              <div className="flex flex-col gap-1.5">
+                                {entries.map((log) => {
+                                  // Each chip's timestamp comes straight from
+                                  // this log's own loggedAt — real, per-entry,
+                                  // never a fixed/shared column time.
+                                  const realTime = new Date(log.loggedAt).toLocaleTimeString("en-US", {
+                                    hour: "2-digit",
+                                    minute: "2-digit"
+                                  });
+
+                                  let content = "";
+                                  let styleClass = col.colorClass;
+                                  if (col.type === "glucose") {
+                                    content = `${log.value} mg/dL`;
+                                    const isNormal = log.value >= 70 && log.value <= 180;
+                                    styleClass = isNormal
+                                      ? "bg-success-light text-success border-success/30"
+                                      : "bg-critical-light text-critical border-critical/30";
+                                  } else if (col.type === "insulin") {
+                                    content = `${log.units}u ${log.insulinType || ""}`.trim();
+                                  } else if (col.type === "meal") {
+                                    content = `${log.carbs}g ${log.mealType || ""}`.trim();
+                                  } else if (col.type === "activity") {
+                                    content = `${log.durationMins}min ${log.activityType || ""}`.trim();
+                                  }
+
+                                  return (
+                                    <div
+                                      key={log.id}
+                                      className={`flex items-center justify-between gap-2 px-2 py-1 rounded-lg border text-[10px] font-semibold ${styleClass}`}
+                                      title={`Logged at ${realTime}`}
+                                    >
+                                      <span className="truncate">{content}</span>
+                                      <span className="numeral text-[9px] font-bold opacity-70 whitespace-nowrap">{realTime}</span>
+                                    </div>
+                                  );
+                                })}
                               </div>
                             </td>
                           );
