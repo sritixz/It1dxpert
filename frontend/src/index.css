@@ -7,19 +7,25 @@
    tailwind.config.js so both Tailwind classes and raw CSS agree).
    ----------------------------------------------------------------------- */
 :root {
-  --color-bg: #f6f8fb;
-  --color-surface: #ffffff;
-  --color-ink: #16233a;
-  --color-muted: #5b6b82;
-  --color-border: #e2e8f0;
+  --color-bg: #8C6E58;
+  --color-surface: #4A3525;
+  --color-surface-inset: #3D2B1F;
+  --color-ink: #F4EDE4;
+  --color-muted: #C4A48A;
+  --color-border: rgba(255,255,255,0.08);
 
-  --color-primary: #2b6cb0;
-  --color-primary-dark: #1e4e85;
-  --color-primary-light: #eaf2fb;
+  --color-primary: #1E6B65;
+  --color-primary-dark: #154F4B;
+  --color-primary-light: #20403C;
 
-  --color-success: #2f9e6e;
-  --color-warning: #c2831f;
-  --color-critical: #c4432e;
+  --color-accent: #E07A5F;
+  --color-accent-dark: #C15A40;
+  --color-accent-light: #4A2E22;
+
+  --color-success: #4EBA87;
+  --color-warning: #F59E0B;
+  --color-critical: #EF4444;
+  --color-info: #38BDF8;
 }
 
 * {
