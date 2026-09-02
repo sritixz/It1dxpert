@@ -170,7 +170,7 @@ export function MedicalDocumentsPage() {
                   onChange={handleFileChange}
                   accept=".pdf,image/*"
                   required
-                  className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                  className="bg-surfaceInset opacity-0 absolute inset-0 w-full h-full cursor-pointer"
                 />
                 <Upload size={18} className="text-muted mx-auto mb-1" />
                 <span className="block text-[11px] font-semibold text-ink truncate">

@@ -882,7 +882,7 @@ export function PatientDashboardPlaceholder() {
       {/* 4. Quick Log Modal overlay */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/40 backdrop-blur-xs">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
             <motion.div 
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -1241,7 +1241,7 @@ export function PatientDashboardPlaceholder() {
                           id="doc-ocr-upload"
                           accept="image/*,application/pdf"
                           onChange={handleAiUploadChange}
-                          className="hidden"
+                          className="bg-surfaceInset hidden"
                         />
                         <label
                           htmlFor="doc-ocr-upload"
@@ -1349,7 +1349,7 @@ export function PatientDashboardPlaceholder() {
                                       updated[idx].selected = !updated[idx].selected;
                                       setScannedLogs(updated);
                                     }}
-                                    className="w-3.5 h-3.5 accent-primary cursor-pointer"
+                                    className="bg-surfaceInset w-3.5 h-3.5 accent-primary cursor-pointer"
                                   />
                                   <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold border uppercase tracking-wider ${
                                     log.type === "glucose" ? "bg-primary-light text-primary border-primary/20" :

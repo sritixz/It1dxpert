@@ -13,7 +13,7 @@ export function Input({ label, error, id, className = "", ...props }) {
       )}
       <input
         id={inputId}
-        className={`w-full rounded-lg border px-3.5 py-2.5 font-body text-sm text-ink placeholder:text-muted/60 focus:border-primary transition-colors ${
+        className={`w-full rounded-lg border bg-surfaceInset px-3.5 py-2.5 font-body text-sm text-ink placeholder:text-muted/60 focus:border-primary transition-colors ${
           error ? "border-critical" : "border-border"
         } ${className}`}
         {...props}

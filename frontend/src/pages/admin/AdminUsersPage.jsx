@@ -80,7 +80,7 @@ export function AdminUsersPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name or email…"
-            className="rounded-lg border border-border px-3.5 py-2 font-body text-sm"
+            className="bg-surfaceInset rounded-lg border border-border px-3.5 py-2 font-body text-sm"
           />
           <button type="submit" className="rounded-lg border border-border px-3.5 py-2 font-body text-sm text-muted hover:bg-bg">Search</button>
         </form>

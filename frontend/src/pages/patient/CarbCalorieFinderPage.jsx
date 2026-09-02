@@ -199,7 +199,7 @@ export function CarbCalorieFinderPage() {
                     ref={fileInputRef}
                     onChange={handleFileChange}
                     accept="image/*"
-                    className="hidden"
+                    className="bg-surfaceInset hidden"
                   />
                   <div className="p-3 bg-primary-light text-primary rounded-full mb-3 shadow-inner">
                     <Camera size={28} />

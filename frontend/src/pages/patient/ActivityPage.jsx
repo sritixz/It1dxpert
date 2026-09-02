@@ -193,7 +193,7 @@ function ActivityFormModal({ existing, onClose, onSaved }) {
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <div>
           <label className="mb-1.5 block font-body text-sm font-medium text-ink">Activity Type</label>
-          <select value={form.activityType} onChange={(e) => setForm({ ...form, activityType: e.target.value })} className="w-full rounded-lg border border-border px-3.5 py-2.5 font-body text-sm">
+          <select value={form.activityType} onChange={(e) => setForm({ ...form, activityType: e.target.value })} className="bg-surfaceInset w-full rounded-lg border border-border px-3.5 py-2.5 font-body text-sm">
             <option>Walking</option>
             <option>Running</option>
             <option>Yoga</option>

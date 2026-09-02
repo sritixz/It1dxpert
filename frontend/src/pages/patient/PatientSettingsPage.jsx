@@ -176,7 +176,7 @@ function PreferencesPanel({ settings, onSaved }) {
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <div>
           <label className="mb-1.5 block font-body text-sm font-medium text-ink">Units</label>
-          <select value={form.preferredUnits} onChange={(e) => setForm({ ...form, preferredUnits: e.target.value })} className="w-full rounded-lg border border-border px-3.5 py-2.5 font-body text-sm">
+          <select value={form.preferredUnits} onChange={(e) => setForm({ ...form, preferredUnits: e.target.value })} className="bg-surfaceInset w-full rounded-lg border border-border px-3.5 py-2.5 font-body text-sm">
             <option value="mg/dL">mg/dL</option>
             <option value="mmol/L">mmol/L</option>
           </select>
@@ -184,7 +184,7 @@ function PreferencesPanel({ settings, onSaved }) {
         <Input label="Timezone" value={form.timezone} onChange={(e) => setForm({ ...form, timezone: e.target.value })} />
         <div>
           <label className="mb-1.5 block font-body text-sm font-medium text-ink">Theme</label>
-          <select value={form.theme} onChange={(e) => setForm({ ...form, theme: e.target.value })} className="w-full rounded-lg border border-border px-3.5 py-2.5 font-body text-sm">
+          <select value={form.theme} onChange={(e) => setForm({ ...form, theme: e.target.value })} className="bg-surfaceInset w-full rounded-lg border border-border px-3.5 py-2.5 font-body text-sm">
             <option value="light">Light</option>
             <option value="dark">Dark</option>
           </select>

@@ -142,7 +142,7 @@ function HospitalFormModal({ existing, onClose, onSaved }) {
         <Input label="Name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
         <div>
           <label className="mb-1.5 block font-body text-sm font-medium text-ink">Type</label>
-          <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="w-full rounded-lg border border-border px-3.5 py-2.5 font-body text-sm">
+          <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="bg-surfaceInset w-full rounded-lg border border-border px-3.5 py-2.5 font-body text-sm">
             <option>Hospital</option>
             <option>Diabetes Center</option>
             <option>Specialty Clinic</option>

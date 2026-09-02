@@ -265,7 +265,7 @@ function NewAppointmentModal({ onClose, onCreated }) {
             required
             value={form.patientId}
             onChange={(e) => setForm({ ...form, patientId: e.target.value })}
-            className="w-full rounded-lg border border-border px-3.5 py-2.5 font-body text-sm"
+            className="bg-surfaceInset w-full rounded-lg border border-border px-3.5 py-2.5 font-body text-sm"
           >
             <option value="">Select a patient</option>
             {patients.map((p) => (
@@ -276,7 +276,7 @@ function NewAppointmentModal({ onClose, onCreated }) {
         <Input label="Date & Time" type="datetime-local" required value={form.scheduledAt} onChange={(e) => setForm({ ...form, scheduledAt: e.target.value })} />
         <div>
           <label className="mb-1.5 block font-body text-sm font-medium text-ink">Type</label>
-          <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="w-full rounded-lg border border-border px-3.5 py-2.5 font-body text-sm">
+          <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="bg-surfaceInset w-full rounded-lg border border-border px-3.5 py-2.5 font-body text-sm">
             <option>Follow-up</option>
             <option>Consultation</option>
           </select>
@@ -284,7 +284,7 @@ function NewAppointmentModal({ onClose, onCreated }) {
         <Input label="Purpose" value={form.purpose} onChange={(e) => setForm({ ...form, purpose: e.target.value })} placeholder="e.g. Routine Checkup" />
         <div>
           <label className="mb-1.5 block font-body text-sm font-medium text-ink">Mode</label>
-          <select value={form.mode} onChange={(e) => setForm({ ...form, mode: e.target.value })} className="w-full rounded-lg border border-border px-3.5 py-2.5 font-body text-sm">
+          <select value={form.mode} onChange={(e) => setForm({ ...form, mode: e.target.value })} className="bg-surfaceInset w-full rounded-lg border border-border px-3.5 py-2.5 font-body text-sm">
             <option value="IN_CLINIC">In Clinic</option>
             <option value="VIDEO_CALL">Video Call</option>
           </select>
@@ -395,7 +395,7 @@ export function ClinicalRecordModal({ appointmentId, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
       <div
         className="w-full max-w-2xl rounded-card bg-surface p-6 shadow-float max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
@@ -533,7 +533,7 @@ export function ClinicalRecordModal({ appointmentId, onClose }) {
                     value={form.notes}
                     onChange={(e) => handleInputChange("notes", e.target.value)}
                     placeholder="Describe symptoms, patient comments, details of physical checkup..."
-                    className="w-full rounded-lg border border-border px-3.5 py-2.5 font-body text-sm text-ink placeholder:text-muted/60 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors resize-none"
+                    className="bg-surfaceInset w-full rounded-lg border border-border px-3.5 py-2.5 font-body text-sm text-ink placeholder:text-muted/60 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors resize-none"
                   />
                 </div>
 
@@ -544,7 +544,7 @@ export function ClinicalRecordModal({ appointmentId, onClose }) {
                     value={form.prescription}
                     onChange={(e) => handleInputChange("prescription", e.target.value)}
                     placeholder="Medications prescribed, insulin doses adjust, tests ordered, next follow-up instructions..."
-                    className="w-full rounded-lg border border-border px-3.5 py-2.5 font-body text-sm text-ink placeholder:text-muted/60 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors resize-none"
+                    className="bg-surfaceInset w-full rounded-lg border border-border px-3.5 py-2.5 font-body text-sm text-ink placeholder:text-muted/60 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors resize-none"
                   />
                 </div>
               </div>

@@ -297,7 +297,8 @@ function DailyLogPlaceholder() {
   const handleEditSave = async (updatedFields) => {
     setIsEditingSaving(true);
     try {
-      const { logType, id } = editingLog;
+      const { logType, log } = editingLog;
+      const id = log.id;
       if (logType === "GLUCOSE") {
         await updateGlucoseLog(id, updatedFields);
       } else if (logType === "INSULIN") {
@@ -1325,7 +1326,7 @@ function InlineCarbFinder({ onAutofill }) {
                 : "border-border hover:border-primary/50 hover:bg-bg/40"
             }`}
           >
-            <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
+            <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="bg-surfaceInset hidden" />
             <Camera size={20} className="text-muted mb-1.5" />
             <span className="block text-[10px] font-semibold text-ink">Upload Plate Photo</span>
             <span className="text-[8px] text-muted block mt-0.5">Drag & drop or click to upload</span>
@@ -1719,7 +1720,7 @@ function AlertsPlaceholder() {
               <p className="text-sm font-medium mt-1">{alert.message}</p>
               <div className="mt-3 flex gap-2">
                 <button className="rounded-lg bg-surface text-ink hover:bg-bg border border-border px-3 py-1 text-xs font-semibold">Acknowledge</button>
-                <button className="rounded-lg bg-ink text-white hover:bg-black px-3 py-1 text-xs font-semibold">Contact Patient</button>
+                <button className="rounded-lg bg-primary text-white hover:bg-primary-dark px-3 py-1 text-xs font-semibold">Contact Patient</button>
               </div>
             </div>
           </div>
@@ -1884,7 +1885,7 @@ function SettingsPlaceholder() {
                   <h4 className="text-xs font-bold text-ink">{pref.label}</h4>
                   <p className="text-[11px] text-muted mt-0.5">{pref.desc}</p>
                 </div>
-                <input type="checkbox" defaultChecked={pref.defaultChecked} className="h-4.5 w-4.5 rounded border-border text-primary focus:ring-primary mt-1 cursor-pointer" />
+                <input type="checkbox" defaultChecked={pref.defaultChecked} className="bg-surfaceInset h-4.5 w-4.5 rounded border-border text-primary focus:ring-primary mt-1 cursor-pointer" />
               </div>
             ))}
           </div>

@@ -7,7 +7,7 @@ export function AuthLayout({ eyebrow, title, subtitle, children }) {
     <div className="flex min-h-screen">
       {/* Brand panel — signature glucose-wave motif, hidden on small screens
           so mobile users go straight to the form. */}
-      <div className="relative hidden w-[42%] flex-col justify-between overflow-hidden bg-ink px-12 py-12 text-white lg:flex">
+      <div className="relative hidden w-[42%] flex-col justify-between overflow-hidden bg-surfaceInset px-12 py-12 text-white lg:flex">
         <div className="flex items-center gap-2.5">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

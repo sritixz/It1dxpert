@@ -110,7 +110,7 @@ function SupportTicketForm() {
               rows={4}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              className="w-full rounded-lg border border-border px-3.5 py-2.5 font-body text-sm text-ink placeholder:text-muted/60 focus:border-primary"
+              className="bg-surfaceInset w-full rounded-lg border border-border px-3.5 py-2.5 font-body text-sm text-ink placeholder:text-muted/60 focus:border-primary"
               placeholder="Tell us what's going on"
             />
           </div>

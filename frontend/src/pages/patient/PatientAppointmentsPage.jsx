@@ -179,7 +179,7 @@ function RequestAppointmentModal({ onClose, onCreated }) {
         <Input label="Purpose" value={form.purpose} onChange={(e) => setForm({ ...form, purpose: e.target.value })} placeholder="What's this visit for?" />
         <div>
           <label className="mb-1.5 block font-body text-sm font-medium text-ink">Mode</label>
-          <select value={form.mode} onChange={(e) => setForm({ ...form, mode: e.target.value })} className="w-full rounded-lg border border-border px-3.5 py-2.5 font-body text-sm">
+          <select value={form.mode} onChange={(e) => setForm({ ...form, mode: e.target.value })} className="bg-surfaceInset w-full rounded-lg border border-border px-3.5 py-2.5 font-body text-sm">
             <option value="IN_CLINIC">In Clinic</option>
             <option value="VIDEO_CALL">Video Call</option>
           </select>
@@ -256,7 +256,7 @@ function PatientRecordModal({ appointmentId, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
       <div
         className="w-full max-w-2xl rounded-card bg-surface p-6 shadow-float max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}

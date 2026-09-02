@@ -233,7 +233,7 @@ function InsulinFormModal({ existing, onClose, onSaved }) {
         <Input label="Dose (units)" type="number" step="0.5" required value={form.units} onChange={(e) => setForm({ ...form, units: e.target.value })} />
         <div>
           <label className="mb-1.5 block font-body text-sm font-medium text-ink">Type</label>
-          <select value={form.insulinType} onChange={(e) => setForm({ ...form, insulinType: e.target.value })} className="w-full rounded-lg border border-border px-3.5 py-2.5 font-body text-sm">
+          <select value={form.insulinType} onChange={(e) => setForm({ ...form, insulinType: e.target.value })} className="bg-surfaceInset w-full rounded-lg border border-border px-3.5 py-2.5 font-body text-sm">
             <option value="Lispro (Meal Time)">Lispro (Meal Time)</option>
             <option value="Basalog (Long-Acting)">Basalog (Long-Acting)</option>
             <option value="Tresba (Long-Acting)">Tresba (Long-Acting)</option>
