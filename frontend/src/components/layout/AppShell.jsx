@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Outlet, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { NAV_CONFIG } from "../../config/navConfig.js";
@@ -9,6 +10,7 @@ export function AppShell() {
   const { user } = useAuth();
   const location = useLocation();
   const navItems = NAV_CONFIG[user?.role] || [];
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
   // Dynamically compute the title from the current path matching the navItems config
   const activeItem = navItems.find((item) => item.path === location.pathname);
@@ -16,10 +18,10 @@ export function AppShell() {
 
   return (
     <div className="flex h-screen bg-bg">
-      <Sidebar navItems={navItems} />
-      <div className="flex flex-1 flex-col overflow-y-auto">
-        <Topbar title={title} />
-        <main className="flex-1 p-8">
+      <Sidebar navItems={navItems} isMobileNavOpen={isMobileNavOpen} onCloseMobileNav={() => setIsMobileNavOpen(false)} />
+      <div className="flex flex-1 flex-col overflow-y-auto min-w-0">
+        <Topbar title={title} onOpenMobileNav={() => setIsMobileNavOpen(true)} />
+        <main className="flex-1 p-4 sm:p-6 lg:p-8">
           <Outlet />
         </main>
       </div>
