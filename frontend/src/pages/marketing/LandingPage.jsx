@@ -252,17 +252,17 @@ function Hero() {
             transition={{ duration: 0.7, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
         className="relative"
       >
-        <div className="rounded-2xl border border-slate-200 bg-surface p-8 shadow-sm">
+        <div className="rounded-2xl border border-border bg-surface p-8 shadow-sm">
           <div className="mb-5 flex items-center justify-between">
             <div>
-              <p className="font-body text-xs font-bold uppercase tracking-wide text-slate-400">Glucose Trends</p>
+              <p className="font-body text-xs font-bold uppercase tracking-wide text-muted">Glucose Trends</p>
               <p className="numeral mt-1 text-2xl font-bold text-ink">128 mg/dL</p>
             </div>
-            <span className="rounded-full bg-green-50 px-2.5 py-1 font-body text-xs font-bold text-green-700 border border-green-200">
+            <span className="rounded-full bg-success-light px-2.5 py-1 font-body text-xs font-bold text-success border border-success/30">
               78% In Range
             </span>
           </div>
-          <GlucoseWave className="w-full" strokeColor="#2B6CB0" fillColor="#2B6CB0" fillOpacity="0.05" gridColor="#CBD5E1" />
+          <GlucoseWave className="w-full" strokeColor="#1E6B65" fillColor="#1E6B65" fillOpacity="0.08" gridColor="#5C4839" />
           <p className="mt-4 font-body text-xs text-muted">
             Glucose Trends dashboard overview showing average value, healthy target range, and standard deviations tracked automatically from daily logs.
           </p>
@@ -311,7 +311,7 @@ function Features() {
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {FEATURES.map(({ icon: Icon, title, body }, i) => (
           <Reveal key={title} delay={i * 0.08}>
-            <div className="group h-full rounded-2xl border border-slate-200 bg-surface p-6 shadow-sm transition-all duration-300 hover:border-primary">
+            <div className="group h-full rounded-2xl border border-border bg-surface p-6 shadow-sm transition-all duration-300 hover:border-primary">
               <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-primary-light text-primary">
                 <Icon size={20} />
               </div>
@@ -384,7 +384,7 @@ function ForHospitals() {
             </div>
             <a
               href="mailto:partnerships@diabetescare.example"
-              className="group inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-white px-5 py-3 font-display text-sm font-semibold text-ink transition-all hover:-translate-y-0.5 hover:shadow-lg"
+              className="group inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-white px-5 py-3 font-display text-sm font-semibold text-surfaceInset transition-all hover:-translate-y-0.5 hover:shadow-lg"
             >
               Talk to us
               <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
