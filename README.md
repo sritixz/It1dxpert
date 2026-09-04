@@ -211,3 +211,6 @@ You can also self-register as a **`PATIENT`** via `/register`. The default Hospi
 ## 🔒 Security & Safety Disclaimers
 *   **Security boundary:** Role-based protection via `ProtectedRoute` on the frontend is a UI convenience. Strict authorization is enforced by the backend Express middleware (`authenticate` -> `authorize` -> `scopeToHospital`) on every REST request.
 *   **Clinical Advisor Limitations:** CareAI and the Insulin Advisor are designed to highlight trends and extract records from documents. They do not formulate clinical prescriptions. Users are instructed to consult their endocrinologist prior to making adjustments to their clinical insulin regimen.
+
+
+  
