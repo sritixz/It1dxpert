@@ -11,7 +11,7 @@ import {
   FolderOpen, FileText, Eye, Trash2, Upload, Loader2, Calendar
 } from "lucide-react";
 import {
-  ResponsiveContainer, ComposedChart, Line, XAxis, YAxis, CartesianGrid,
+  ResponsiveContainer, ComposedChart, Line, Area, Bar, Brush, XAxis, YAxis, CartesianGrid,
   Tooltip, ReferenceArea, ReferenceLine,
 } from "recharts";
 import { Card } from "../../components/ui/Card.jsx";
@@ -49,6 +49,7 @@ const EVENT_CONFIG = {
 export function GlucoseMonitorPage() {
   const { patientId } = useParams();
   const [days, setDays] = useState(7);
+  const [chartType, setChartType] = useState("area");
   const [overview, setOverview] = useState(null);
   const [trends, setTrends] = useState(null);
   const [timeline, setTimeline] = useState([]);
@@ -244,23 +245,76 @@ export function GlucoseMonitorPage() {
             <StatCard label="Low (<70 mg/dL)" value={trends.insights.lowPercent} unit="%" tone="warning" />
           </div>
 
-          {/* Trend chart */}
+          {/* Trend chart with interactive view modes & range brush slider */}
           <Card>
-            <p className="mb-4 font-display text-sm font-bold text-ink">Glucose Trend</p>
+            <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <p className="font-display text-sm font-bold text-ink">Glucose Trend Analysis</p>
+                <p className="font-body text-xs text-muted">Intraday readings with Target Range (70–180 mg/dL). Drag slider below to zoom.</p>
+              </div>
+
+              {/* Interactive Chart Type Controls */}
+              <div className="flex items-center gap-1 rounded-lg border border-border bg-bg/50 p-1 self-start sm:self-auto">
+                <button
+                  onClick={() => setChartType("area")}
+                  className={`rounded-md px-2.5 py-1 font-body text-xs font-semibold transition-all ${
+                    chartType === "area" ? "bg-primary text-white shadow-xs" : "text-muted hover:text-ink"
+                  }`}
+                >
+                  Area
+                </button>
+                <button
+                  onClick={() => setChartType("line")}
+                  className={`rounded-md px-2.5 py-1 font-body text-xs font-semibold transition-all ${
+                    chartType === "line" ? "bg-primary text-white shadow-xs" : "text-muted hover:text-ink"
+                  }`}
+                >
+                  Line
+                </button>
+                <button
+                  onClick={() => setChartType("bar")}
+                  className={`rounded-md px-2.5 py-1 font-body text-xs font-semibold transition-all ${
+                    chartType === "bar" ? "bg-primary text-white shadow-xs" : "text-muted hover:text-ink"
+                  }`}
+                >
+                  Bar
+                </button>
+              </div>
+            </div>
+
             {chartData?.length ? (
-              <ResponsiveContainer width="100%" height={280}>
-                <ComposedChart data={chartData} margin={{ left: -16, right: 8 }}>
-                  <CartesianGrid stroke="#E2E8F0" strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#5B6B82" }} minTickGap={24} />
-                  <YAxis domain={[0, 300]} tick={{ fontSize: 11, fill: "#5B6B82" }} />
+              <ResponsiveContainer width="100%" height={320}>
+                <ComposedChart data={chartData} margin={{ left: -16, right: 8, top: 10, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="glucoseGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#006766" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#006766" stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid stroke="#E0ECE9" strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#527578" }} minTickGap={24} />
+                  <YAxis domain={[0, 300]} tick={{ fontSize: 11, fill: "#527578" }} />
                   <Tooltip
                     formatter={(value) => [`${value} mg/dL`, "Glucose"]}
-                    contentStyle={{ borderRadius: 8, borderColor: "#E2E8F0", fontSize: 12 }}
+                    contentStyle={{ borderRadius: 8, borderColor: "#E0ECE9", fontSize: 12, backgroundColor: "#FFFFFF", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
                   />
+                  {/* Clinical Target Range Shading (70 - 180 mg/dL) */}
                   <ReferenceArea y1={70} y2={180} fill="#2F9E6E" fillOpacity={0.08} />
-                  <ReferenceLine y={180} stroke="#C4432E" strokeDasharray="4 4" />
-                  <ReferenceLine y={70} stroke="#C2831F" strokeDasharray="4 4" />
-                  <Line type="monotone" dataKey="value" stroke="#2B6CB0" strokeWidth={2} dot={false} />
+                  <ReferenceLine y={180} stroke="#C4432E" strokeDasharray="4 4" label={{ value: "High (180)", fill: "#C4432E", fontSize: 10, position: "insideTopRight" }} />
+                  <ReferenceLine y={70} stroke="#C2831F" strokeDasharray="4 4" label={{ value: "Low (70)", fill: "#C2831F", fontSize: 10, position: "insideBottomRight" }} />
+                  
+                  {chartType === "area" && (
+                    <Area type="monotone" dataKey="value" stroke="#006766" strokeWidth={2.5} fill="url(#glucoseGradient)" activeDot={{ r: 6, fill: "#006766", stroke: "#FFFFFF", strokeWidth: 2 }} />
+                  )}
+                  {chartType === "line" && (
+                    <Line type="monotone" dataKey="value" stroke="#006766" strokeWidth={2.5} dot={{ r: 2.5, fill: "#006766" }} activeDot={{ r: 6, fill: "#006766", stroke: "#FFFFFF", strokeWidth: 2 }} />
+                  )}
+                  {chartType === "bar" && (
+                    <Bar dataKey="value" fill="#006766" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                  )}
+
+                  {/* Interactive Drag-to-Zoom Timeline Brush */}
+                  <Brush dataKey="label" height={26} stroke="#006766" fill="#F4F7F6" tickFormatter={() => ""} />
                 </ComposedChart>
               </ResponsiveContainer>
             ) : (
