@@ -10,37 +10,43 @@ export default {
       // from the CSS variables over time.
       // -----------------------------------------------------------------
       colors: {
-        bg: "#8C6E58",
-        surface: "#4A3525",
-        surfaceInset: "#3D2B1F",
-        ink: "#F4EDE4",
-        muted: "#C4A48A",
-        border: "rgba(255,255,255,0.08)",
+        bg: "#F4F7F6",
+        surface: "#FFFFFF",
+        surfaceInset: "#EEF4F2",
+        ink: "#102A2D",
+        muted: "#527578",
+        border: "#E0ECE9",
+        sidebar: {
+          DEFAULT: "#00383C",
+          active: "#006766",
+          muted: "#A2C0C2",
+          hover: "#004B50",
+        },
         primary: {
-          DEFAULT: "#1E6B65",
-          dark: "#154F4B",
-          light: "#20403C",
+          DEFAULT: "#006766",
+          dark: "#004D4E",
+          light: "#E6F2F2",
         },
         accent: {
           DEFAULT: "#E07A5F",
           dark: "#C15A40",
-          light: "#4A2E22",
+          light: "#FBEEE9",
         },
         success: {
-          DEFAULT: "#4EBA87",
-          light: "#1E3A2C",
+          DEFAULT: "#2F9E6E",
+          light: "#E7F6EF",
         },
         warning: {
-          DEFAULT: "#F59E0B",
-          light: "#4A3311",
+          DEFAULT: "#C2831F",
+          light: "#FBF1DF",
         },
         critical: {
-          DEFAULT: "#EF4444",
-          light: "#4A1F1F",
+          DEFAULT: "#C4432E",
+          light: "#FAEAE7",
         },
         info: {
-          DEFAULT: "#38BDF8",
-          light: "#1B3A4A",
+          DEFAULT: "#0284C7",
+          light: "#E0F2FE",
         },
       },
       fontFamily: {

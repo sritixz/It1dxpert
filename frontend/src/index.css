@@ -7,25 +7,35 @@
    tailwind.config.js so both Tailwind classes and raw CSS agree).
    ----------------------------------------------------------------------- */
 :root {
-  --color-bg: #8C6E58;
-  --color-surface: #4A3525;
-  --color-surface-inset: #3D2B1F;
-  --color-ink: #F4EDE4;
-  --color-muted: #C4A48A;
-  --color-border: rgba(255,255,255,0.08);
+  --color-bg: #f4f7f6;
+  --color-surface: #ffffff;
+  --color-surface-inset: #eef4f2;
+  --color-ink: #102a2d;
+  --color-muted: #527578;
+  --color-border: #e0ece9;
 
-  --color-primary: #1E6B65;
-  --color-primary-dark: #154F4B;
-  --color-primary-light: #20403C;
+  --color-primary: #006766;
+  --color-primary-dark: #004d4e;
+  --color-primary-light: #e6f2f2;
 
-  --color-accent: #E07A5F;
-  --color-accent-dark: #C15A40;
-  --color-accent-light: #4A2E22;
+  --color-sidebar-bg: #00383c;
+  --color-sidebar-active: #006766;
+  --color-sidebar-muted: #a2c0c2;
 
-  --color-success: #4EBA87;
-  --color-warning: #F59E0B;
-  --color-critical: #EF4444;
-  --color-info: #38BDF8;
+  --color-landing-bg: #f2f7f5;
+
+  --color-accent: #e07a5f;
+  --color-accent-dark: #c15a40;
+  --color-accent-light: #fbeee9;
+
+  --color-success: #2f9e6e;
+  --color-success-light: #e7f6ef;
+  --color-warning: #c2831f;
+  --color-warning-light: #fbf1df;
+  --color-critical: #c4432e;
+  --color-critical-light: #faeae7;
+  --color-info: #0284c7;
+  --color-info-light: #e0f2fe;
 }
 
 * {
