@@ -130,9 +130,9 @@ function computeStatus(latestReading, inactiveCutoff, thresholds = DEFAULT_THRES
  * (log.service.js), just gated by the same assigned-patient authorization
  * check used everywhere else on the doctor side.
  */
-export async function getPatientGlucoseTrends(patientId, { hospitalId, doctorProfileId, days }) {
+export async function getPatientGlucoseTrends(patientId, { hospitalId, doctorProfileId, days, startDate, endDate }) {
   await assertDoctorCanAccessPatient(patientId, { hospitalId, doctorProfileId });
-  return getGlucoseTrends(patientId, days);
+  return getGlucoseTrends(patientId, { days, startDate, endDate });
 }
 
 /**

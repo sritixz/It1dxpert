@@ -27,13 +27,17 @@ export async function getPatientOverviewController(req, res) {
   res.json({ success: true, data });
 }
 
-// Glucose Monitor screen — GET /doctor/patients/:patientId/glucose-trends?days=7|14|30|90
+// Glucose Monitor screen — GET /doctor/patients/:patientId/glucose-trends?days=1|7|14|30|90|3650&startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
 export async function getPatientGlucoseTrendsController(req, res) {
-  const days = Number(req.query.days) || 7;
+  const days = req.query.days != null ? Number(req.query.days) : 7;
+  const startDate = req.query.startDate || null;
+  const endDate = req.query.endDate || null;
   const data = await doctorService.getPatientGlucoseTrends(req.params.patientId, {
     hospitalId: req.hospitalId,
     doctorProfileId: req.doctorProfileId,
     days,
+    startDate,
+    endDate,
   });
   res.json({ success: true, data });
 }

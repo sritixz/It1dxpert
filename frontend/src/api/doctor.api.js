@@ -17,12 +17,11 @@ export async function fetchPatientOverview(patientId) {
   return data.data;
 }
 
-// Glucose Monitor screen — days is one of 7 | 14 | 30 | 90 (backend doesn't
-// support intraday granularity like 3H/6H/12H/24H yet — those tabs from the
-// reference mockup aren't backed by real data, so they're not offered here).
-export async function fetchPatientGlucoseTrends(patientId, days = 7) {
+// Glucose Monitor screen — options can be number of days or object { days, startDate, endDate }
+export async function fetchPatientGlucoseTrends(patientId, options = 7) {
+  const queryParams = typeof options === "object" ? options : { days: options };
   const { data } = await apiClient.get(`/doctor/patients/${patientId}/glucose-trends`, {
-    params: { days },
+    params: queryParams,
   });
   return data.data;
 }

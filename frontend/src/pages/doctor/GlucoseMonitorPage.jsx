@@ -32,10 +32,13 @@ import { ClinicalRecordModal } from "./AppointmentsPage.jsx";
 import { formatDateTime, formatRelativeTime } from "../../utils/format.js";
 
 const RANGE_OPTIONS = [
-  { days: 7, label: "7D" },
+  { days: 1, label: "1D (Daily)" },
+  { days: 7, label: "7D (Weekly)" },
   { days: 14, label: "14D" },
-  { days: 30, label: "30D" },
+  { days: 30, label: "30D (Monthly)" },
   { days: 90, label: "90D" },
+  { days: 3650, label: "ALL" },
+  { days: "CUSTOM", label: "Custom Date Range" },
 ];
 
 const EVENT_CONFIG = {
@@ -50,6 +53,9 @@ export function GlucoseMonitorPage() {
   const { patientId } = useParams();
   const [days, setDays] = useState(7);
   const [chartType, setChartType] = useState("area");
+  const [isCustomMode, setIsCustomMode] = useState(false);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [overview, setOverview] = useState(null);
   const [trends, setTrends] = useState(null);
   const [timeline, setTimeline] = useState([]);
@@ -109,7 +115,11 @@ export function GlucoseMonitorPage() {
     setIsLoading(true);
     setError("");
 
-    Promise.all([fetchPatientGlucoseTrends(patientId, days), fetchPatientTimeline(patientId, 20)])
+    const queryParams = isCustomMode && startDate && endDate
+      ? { startDate, endDate }
+      : { days: days === "CUSTOM" ? 7 : days };
+
+    Promise.all([fetchPatientGlucoseTrends(patientId, queryParams), fetchPatientTimeline(patientId, 20)])
       .then(([trendsData, timelineData]) => {
         if (cancelled) return;
         setTrends(trendsData);
@@ -125,7 +135,7 @@ export function GlucoseMonitorPage() {
     return () => {
       cancelled = true;
     };
-  }, [patientId, days]);
+  }, [patientId, days, isCustomMode, startDate, endDate]);
 
   const handleDocUpload = async (e) => {
     e.preventDefault();
@@ -168,10 +178,21 @@ export function GlucoseMonitorPage() {
     }
   };
 
-  const chartData = trends?.series.map((point) => ({
-    ...point,
-    label: formatDateTime(point.loggedAt),
-  }));
+  const chartData = trends?.series.map((point) => {
+    const d = new Date(point.loggedAt);
+    let tickLabel = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    if (days === 1 || (startDate && startDate === endDate)) {
+      tickLabel = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+    } else if (days <= 14) {
+      tickLabel = `${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })} ${d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}`;
+    }
+
+    return {
+      ...point,
+      label: tickLabel,
+      fullDateTime: d.toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" }),
+    };
+  });
 
   return (
     <div className="flex flex-col gap-6">
@@ -201,20 +222,78 @@ export function GlucoseMonitorPage() {
           </div>
         </div>
 
-        <div className="flex gap-1.5 rounded-lg border border-border bg-surface p-1">
-          {RANGE_OPTIONS.map((opt) => (
-            <button
-              key={opt.days}
-              onClick={() => setDays(opt.days)}
-              className={`rounded-md px-3 py-1.5 font-body text-xs font-semibold transition-colors ${
-                days === opt.days ? "bg-primary text-white" : "text-muted hover:bg-bg"
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
+        {/* Range Selector & Granularity Buttons */}
+        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
+          <div className="flex flex-wrap gap-1 rounded-lg border border-border bg-surface p-1">
+            {RANGE_OPTIONS.map((opt) => (
+              <button
+                key={opt.days}
+                onClick={() => {
+                  if (opt.days === "CUSTOM") {
+                    setIsCustomMode(true);
+                    setDays("CUSTOM");
+                  } else {
+                    setIsCustomMode(false);
+                    setDays(opt.days);
+                  }
+                }}
+                className={`rounded-md px-2.5 py-1.5 font-body text-xs font-semibold transition-colors ${
+                  (days === opt.days || (opt.days === "CUSTOM" && isCustomMode))
+                    ? "bg-primary text-white shadow-xs"
+                    : "text-muted hover:bg-bg hover:text-ink"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
+
+      {/* Interactive Custom Date Range Picker Bar */}
+      {isCustomMode && (
+        <Card className="bg-surface/80 border-primary/20 p-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Calendar size={16} className="text-primary" />
+              <p className="font-display text-xs font-bold text-ink">Custom Date Range Selector</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+              <div className="flex items-center gap-1.5">
+                <label className="font-body text-xs font-semibold text-muted">From:</label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="rounded-lg border border-border bg-surface px-2.5 py-1 font-body text-xs text-ink focus:border-primary"
+                />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <label className="font-body text-xs font-semibold text-muted">To:</label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="rounded-lg border border-border bg-surface px-2.5 py-1 font-body text-xs text-ink focus:border-primary"
+                />
+              </div>
+              {(startDate || endDate) && (
+                <button
+                  onClick={() => {
+                    setStartDate("");
+                    setEndDate("");
+                    setIsCustomMode(false);
+                    setDays(7);
+                  }}
+                  className="text-xs font-semibold text-muted hover:text-critical transition-colors"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+          </div>
+        </Card>
+      )}
 
       {error && (
         <Card className="border-critical/30 bg-critical-light">
@@ -295,6 +374,7 @@ export function GlucoseMonitorPage() {
                   <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#527578" }} minTickGap={24} />
                   <YAxis domain={[0, 300]} tick={{ fontSize: 11, fill: "#527578" }} />
                   <Tooltip
+                    labelFormatter={(label, payload) => payload?.[0]?.payload?.fullDateTime || label}
                     formatter={(value) => [`${value} mg/dL`, "Glucose"]}
                     contentStyle={{ borderRadius: 8, borderColor: "#E0ECE9", fontSize: 12, backgroundColor: "#FFFFFF", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
                   />

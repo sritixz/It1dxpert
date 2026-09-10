@@ -330,12 +330,28 @@ export async function getDailyLog(patientId, dateStr) {
  * agreed to avoid — flagging that explicitly since "estimates HbA1c" can
  * sound like it crosses that line at a glance.
  */
-export async function getGlucoseTrends(patientId, days = 7) {
-  const since = new Date();
-  since.setDate(since.getDate() - days);
+export async function getGlucoseTrends(patientId, options = 7) {
+  const days = typeof options === "object" ? options.days : Number(options);
+  const startDate = typeof options === "object" ? options.startDate : null;
+  const endDate = typeof options === "object" ? options.endDate : null;
+
+  let whereClause = { patientId };
+
+  if (startDate && endDate) {
+    const endOfDay = new Date(endDate);
+    endOfDay.setHours(23, 59, 59, 999);
+    whereClause.loggedAt = {
+      gte: new Date(startDate),
+      lte: endOfDay,
+    };
+  } else if (days && days > 0 && days < 3650) {
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+    whereClause.loggedAt = { gte: since };
+  }
 
   const logs = await prisma.glucoseLog.findMany({
-    where: { patientId, loggedAt: { gte: since } },
+    where: whereClause,
     orderBy: { loggedAt: "asc" },
   });
 
