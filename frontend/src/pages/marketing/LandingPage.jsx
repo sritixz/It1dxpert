@@ -195,7 +195,7 @@ function Hero() {
   const [selectedRole, setSelectedRole] = useState("Patient");
 
   return (
-    <section className="relative bg-[#00383C] text-white pt-10 pb-28 lg:pt-14 lg:pb-36 overflow-hidden">
+    <section className="relative bg-[#E4F2F0] text-[#00383C] pt-12 pb-28 lg:pt-16 lg:pb-36 overflow-hidden">
       <BackgroundBlobs />
 
       <div className="relative mx-auto max-w-6xl px-6">
@@ -211,17 +211,17 @@ function Hero() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1, duration: 0.5 }}
-              className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1 font-body text-xs font-semibold text-[#A2C0C2] backdrop-blur-xs border border-white/10"
+              className="mb-4 inline-flex items-center gap-2 rounded-full bg-[#00383C]/10 px-3.5 py-1 font-body text-xs font-bold text-[#00383C] backdrop-blur-xs border border-[#00383C]/15"
             >
-              <span className="h-2 w-2 rounded-full bg-[#00A896] animate-pulse" />
+              <span className="h-2 w-2 rounded-full bg-[#006766] animate-pulse" />
               Type 1 Diabetes Management
             </motion.p>
 
-            <h1 className="font-display text-4xl font-extrabold leading-[1.15] text-white lg:text-5xl tracking-tight">
+            <h1 className="font-display text-4xl font-extrabold leading-[1.15] text-[#00383C] lg:text-5xl tracking-tight">
               Every reading,
               <br />
               in one{" "}
-              <span className="relative inline-block text-[#A2C0C2]">
+              <span className="relative inline-block text-[#006766]">
                 steady view
                 <svg
                   className="absolute -bottom-1 left-0 w-full"
@@ -244,7 +244,7 @@ function Hero() {
               .
             </h1>
 
-            <p className="mt-5 max-w-lg font-body text-base leading-relaxed text-[#A2C0C2]">
+            <p className="mt-5 max-w-lg font-body text-base font-medium leading-relaxed text-[#002B2E]/80">
               DiabetesCare helps Type 1 patients log glucose, insulin, meals, and activity daily —
               and gives care teams the full picture between visits, not just at appointments.
             </p>
@@ -252,14 +252,14 @@ function Hero() {
             <div className="mt-8 flex flex-wrap items-center gap-4">
               <Link
                 to="/register"
-                className="group inline-flex items-center gap-2 rounded-xl bg-[#006766] px-6 py-3.5 font-display text-sm font-bold text-white transition-all hover:bg-[#005252] hover:shadow-lg shadow-md"
+                className="group inline-flex items-center gap-2 rounded-xl bg-[#00383C] px-6 py-3.5 font-display text-sm font-bold text-white transition-all hover:bg-[#002B2E] hover:shadow-lg shadow-md"
               >
                 Create your account
                 <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
               </Link>
               <a
                 href="#hospitals"
-                className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-6 py-3.5 font-display text-sm font-semibold text-white transition-all hover:bg-white/10 backdrop-blur-xs"
+                className="inline-flex items-center gap-2 rounded-xl border border-[#00383C]/30 bg-white/80 px-6 py-3.5 font-display text-sm font-bold text-[#00383C] transition-all hover:bg-white hover:border-[#00383C] shadow-xs"
               >
                 For hospitals & clinics
               </a>
