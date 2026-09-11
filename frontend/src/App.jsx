@@ -8,6 +8,7 @@ import { LandingPage } from "./pages/marketing/LandingPage.jsx";
 import { LoginPage } from "./pages/auth/LoginPage.jsx";
 import { RegisterPage } from "./pages/auth/RegisterPage.jsx";
 import { PatientDashboardPlaceholder } from "./pages/patient/PatientDashboardPlaceholder.jsx";
+import { PatientGlucoseTrendsPage } from "./pages/patient/PatientGlucoseTrendsPage.jsx";
 import { InsulinRecordsPage } from "./pages/patient/InsulinRecordsPage.jsx";
 import { ActivityPage } from "./pages/patient/ActivityPage.jsx";
 import { PatientAppointmentsPage } from "./pages/patient/PatientAppointmentsPage.jsx";
@@ -53,7 +54,7 @@ export default function App() {
           >
             <Route index element={<PatientDashboardPlaceholder />} />
             <Route path="daily-log" element={<PlaceholderPage />} />
-            <Route path="glucose-trends" element={<PlaceholderPage />} />
+            <Route path="glucose-trends" element={<PatientGlucoseTrendsPage />} />
             <Route path="insulin-records" element={<InsulinRecordsPage />} />
             <Route path="insulin-advisor" element={<InsulinAdvisorPage />} />
             <Route path="ai-assistant" element={<AiAgentPage />} />

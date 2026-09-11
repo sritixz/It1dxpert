@@ -167,7 +167,8 @@ export async function fetchPatient7DayReport() {
   const { data } = await apiClient.get("/patient/report/last-7-days");
   return data.data;
 }
-export async function fetchGlucoseTrends(days = 7) {
-  const { data } = await apiClient.get("/patient/glucose-trends", { params: { days } });
+export async function fetchGlucoseTrends(params = 7) {
+  const query = typeof params === "object" ? params : { days: params };
+  const { data } = await apiClient.get("/patient/glucose-trends", { params: query });
   return data.data;
 }

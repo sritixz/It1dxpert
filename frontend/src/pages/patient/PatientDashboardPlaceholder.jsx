@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { 
   Droplet, Syringe, UtensilsCrossed, Footprints, Flame, Award, 
   Plus, Check, X, Loader2, ChevronRight, AlertCircle, Sparkles, Upload, Calendar, FileText,
@@ -693,19 +694,24 @@ export function PatientDashboardPlaceholder() {
                   <Droplet size={18} />
                 </div>
               </div>
-              <div className="mt-4 pt-2 border-t border-border/40 flex justify-between items-center text-xs">
-                <span className="text-muted">
-                  {latestGlucose ? latestGlucose.context : "No records today"}
-                </span>
-                {latestGlucose && (
-                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                    latestGlucose.value >= 70 && latestGlucose.value <= 180
-                      ? "bg-success-light text-success"
-                      : "bg-critical-light text-critical"
-                  }`}>
-                    {latestGlucose.value >= 70 && latestGlucose.value <= 180 ? "In Range" : "Out of Range"}
+              <div className="mt-4 pt-2 border-t border-border/40 flex flex-col gap-1.5 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted">
+                    {latestGlucose ? latestGlucose.context : "No records today"}
                   </span>
-                )}
+                  {latestGlucose && (
+                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                      latestGlucose.value >= 70 && latestGlucose.value <= 180
+                        ? "bg-success-light text-success"
+                        : "bg-critical-light text-critical"
+                    }`}>
+                      {latestGlucose.value >= 70 && latestGlucose.value <= 180 ? "In Range" : "Out of Range"}
+                    </span>
+                  )}
+                </div>
+                <Link to="/patient/glucose-trends" className="inline-flex items-center gap-1 font-body text-[11px] font-bold text-primary hover:underline self-end pt-1">
+                  View Trends & Graph <ChevronRight size={12} />
+                </Link>
               </div>
             </Card>
 

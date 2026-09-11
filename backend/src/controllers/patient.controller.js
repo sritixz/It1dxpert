@@ -139,8 +139,10 @@ export async function getDailyLogController(req, res) {
 }
 
 export async function getGlucoseTrendsController(req, res) {
-  const days = Number(req.query.days) || 7;
-  const data = await logService.getGlucoseTrends(req.patientProfileId, days);
+  const days = req.query.days === "CUSTOM" ? "CUSTOM" : (Number(req.query.days) || 7);
+  const startDate = req.query.startDate;
+  const endDate = req.query.endDate;
+  const data = await logService.getGlucoseTrends(req.patientProfileId, { days, startDate, endDate });
   res.json({ success: true, data });
 }
 
