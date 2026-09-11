@@ -1,7 +1,3 @@
-// Hospitals / Clinics screen. With one real hospital right now, this list
-// will show exactly one row — that's fine. The value is that the screen
-// (and its backend) is already ready for hospital #2 without any changes.
-
 import { useEffect, useState } from "react";
 import { Plus, Building2, Pencil } from "lucide-react";
 import { Card } from "../../components/ui/Card.jsx";
@@ -10,9 +6,7 @@ import { Modal } from "../../components/ui/Modal.jsx";
 import { Input } from "../../components/ui/Input.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { fetchHospitals, createHospital, updateHospital, uploadHospitalLogo } from "../../api/admin.api.js";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
-const BASE_URL = API_BASE_URL.replace("/api", "");
+import { getImageUrl } from "../../utils/format.js";
 
 export function AdminHospitalsPage() {
   const { user } = useAuth();
@@ -45,38 +39,7 @@ export function AdminHospitalsPage() {
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {hospitals.map((h) => (
-            <Card key={h.id}>
-              <div className="mb-3 flex items-start justify-between">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-light text-primary overflow-hidden border border-border">
-                  {h.logoUrl ? (
-                    <img src={`${BASE_URL}${h.logoUrl}`} alt={h.name} className="h-full w-full object-contain bg-white" />
-                  ) : (
-                    <Building2 size={18} />
-                  )}
-                </div>
-                {user?.role === "SUPER_ADMIN" && (
-                  <button onClick={() => { setEditing(h); setShowModal(true); }} className="text-muted hover:text-primary">
-                    <Pencil size={14} />
-                  </button>
-                )}
-              </div>
-              <p className="font-display text-sm font-bold text-ink">{h.name}</p>
-              <p className="font-body text-xs text-muted">{h.type}</p>
-              {h.address && <p className="mt-2 font-body text-xs text-muted">{h.address}</p>}
-              <div className="mt-4 flex gap-4 border-t border-border pt-3">
-                <div>
-                  <p className="numeral text-lg font-semibold text-ink">{h.patientCount}</p>
-                  <p className="font-body text-xs text-muted">Patients</p>
-                </div>
-                <div>
-                  <p className="numeral text-lg font-semibold text-ink">{h.doctorCount}</p>
-                  <p className="font-body text-xs text-muted">Doctors</p>
-                </div>
-                <span className={`ml-auto self-start rounded-full px-2 py-0.5 font-body text-[10px] font-semibold ${h.isActive ? "bg-success-light text-success" : "bg-bg text-muted"}`}>
-                  {h.isActive ? "Active" : "Inactive"}
-                </span>
-              </div>
-            </Card>
+            <HospitalCard key={h.id} hospital={h} user={user} onEdit={(h) => { setEditing(h); setShowModal(true); }} />
           ))}
         </div>
       )}
@@ -92,6 +55,50 @@ export function AdminHospitalsPage() {
   );
 }
 
+function HospitalCard({ hospital: h, user, onEdit }) {
+  const [logoError, setLogoError] = useState(false);
+
+  return (
+    <Card>
+      <div className="mb-3 flex items-start justify-between">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-light text-primary overflow-hidden border border-border">
+          {h.logoUrl && !logoError ? (
+            <img
+              src={getImageUrl(h.logoUrl)}
+              alt={h.name}
+              onError={() => setLogoError(true)}
+              className="h-full w-full object-contain bg-white"
+            />
+          ) : (
+            <Building2 size={18} />
+          )}
+        </div>
+        {user?.role === "SUPER_ADMIN" && (
+          <button onClick={() => onEdit(h)} className="text-muted hover:text-primary">
+            <Pencil size={14} />
+          </button>
+        )}
+      </div>
+      <p className="font-display text-sm font-bold text-ink">{h.name}</p>
+      <p className="font-body text-xs text-muted">{h.type}</p>
+      {h.address && <p className="mt-2 font-body text-xs text-muted">{h.address}</p>}
+      <div className="mt-4 flex gap-4 border-t border-border pt-3">
+        <div>
+          <p className="numeral text-lg font-semibold text-ink">{h.patientCount}</p>
+          <p className="font-body text-xs text-muted">Patients</p>
+        </div>
+        <div>
+          <p className="numeral text-lg font-semibold text-ink">{h.doctorCount}</p>
+          <p className="font-body text-xs text-muted">Doctors</p>
+        </div>
+        <span className={`ml-auto self-start rounded-full px-2 py-0.5 font-body text-[10px] font-semibold ${h.isActive ? "bg-success-light text-success" : "bg-bg text-muted"}`}>
+          {h.isActive ? "Active" : "Inactive"}
+        </span>
+      </div>
+    </Card>
+  );
+}
+
 function HospitalFormModal({ existing, onClose, onSaved }) {
   const [form, setForm] = useState({
     name: existing?.name || "",
@@ -101,7 +108,8 @@ function HospitalFormModal({ existing, onClose, onSaved }) {
     contactPhone: existing?.contactPhone || "",
   });
   const [logoFile, setLogoFile] = useState(null);
-  const [logoPreview, setLogoPreview] = useState(existing?.logoUrl ? `${BASE_URL}${existing.logoUrl}` : "");
+  const [logoPreview, setLogoPreview] = useState(existing?.logoUrl ? getImageUrl(existing.logoUrl) : "");
+  const [logoPreviewError, setLogoPreviewError] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -109,6 +117,7 @@ function HospitalFormModal({ existing, onClose, onSaved }) {
     const file = e.target.files?.[0];
     if (file) {
       setLogoFile(file);
+      setLogoPreviewError(false);
       setLogoPreview(URL.createObjectURL(file));
     }
   }
@@ -156,15 +165,20 @@ function HospitalFormModal({ existing, onClose, onSaved }) {
           <label className="mb-1.5 block font-body text-sm font-medium text-ink">Hospital Logo</label>
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-border bg-bg overflow-hidden">
-              {logoPreview ? (
-                <img src={logoPreview} alt="Preview" className="h-full w-full object-contain" />
+              {logoPreview && !logoPreviewError ? (
+                <img
+                  src={logoPreview}
+                  alt="Preview"
+                  onError={() => setLogoPreviewError(true)}
+                  className="h-full w-full object-contain"
+                />
               ) : (
                 <Building2 className="text-muted" size={20} />
               )}
             </div>
             <input
               type="file"
-              accept="image/png, image/jpeg, image/jpg"
+              accept="image/png, image/jpeg, image/jpg, image/webp, image/svg+xml"
               onChange={handleLogoChange}
               className="font-body text-xs text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-primary-light file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-primary file:hover:bg-primary-light/80"
             />

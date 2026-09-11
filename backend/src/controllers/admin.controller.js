@@ -1,3 +1,4 @@
+import fs from "fs";
 import { z } from "zod";
 import * as adminService from "../services/admin.service.js";
 import { AppError } from "../utils/AppError.js";
@@ -112,7 +113,19 @@ export async function uploadHospitalLogoController(req, res) {
     throw new AppError("No file was uploaded.", 400);
   }
   
-  const logoUrl = `/uploads/${req.file.filename}`;
+  let logoUrl;
+  if (req.file.buffer) {
+    const mimeType = req.file.mimetype || "image/png";
+    const base64Data = req.file.buffer.toString("base64");
+    logoUrl = `data:${mimeType};base64,${base64Data}`;
+  } else if (req.file.path && fs.existsSync(req.file.path)) {
+    const fileBuffer = fs.readFileSync(req.file.path);
+    const mimeType = req.file.mimetype || "image/png";
+    logoUrl = `data:${mimeType};base64,${fileBuffer.toString("base64")}`;
+  } else {
+    logoUrl = `/uploads/${req.file.filename}`;
+  }
+
   const hospital = await adminService.updateHospitalLogo(hospitalId, logoUrl);
   res.json({ success: true, data: hospital });
 }

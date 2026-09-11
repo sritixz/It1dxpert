@@ -28,12 +28,29 @@ export const upload = multer({
     fileSize: 10 * 1024 * 1024, // 10MB file limit
   },
   fileFilter: (req, file, cb) => {
-    const allowedTypes = [".pdf", ".jpeg", ".jpg", ".png"];
+    const allowedTypes = [".pdf", ".jpeg", ".jpg", ".png", ".webp", ".svg"];
     const ext = path.extname(file.originalname).toLowerCase();
     if (allowedTypes.includes(ext)) {
       cb(null, true);
     } else {
-      cb(new Error("Only PDF, JPEG, JPG, and PNG files are allowed."));
+      cb(new Error("Only PDF, JPEG, JPG, PNG, WEBP, and SVG files are allowed."));
+    }
+  },
+});
+
+// Memory storage uploader for persistent Base64 storage in database & Vercel serverless environments
+export const uploadMemory = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB file limit
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = [".pdf", ".jpeg", ".jpg", ".png", ".webp", ".svg"];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowedTypes.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only PDF, JPEG, JPG, PNG, WEBP, and SVG files are allowed."));
     }
   },
 });

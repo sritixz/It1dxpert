@@ -72,6 +72,13 @@ export async function meController(req, res) {
       email: true,
       role: true,
       hospitalId: true,
+      hospital: {
+        select: {
+          id: true,
+          name: true,
+          logoUrl: true,
+        }
+      },
       patientProfile: {
         include: {
           assignedDoctor: {

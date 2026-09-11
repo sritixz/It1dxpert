@@ -37,3 +37,13 @@ export function formatDateTime(dateString) {
     minute: "2-digit",
   });
 }
+
+export function getImageUrl(url) {
+  if (!url) return "";
+  if (url.startsWith("data:") || url.startsWith("http://") || url.startsWith("https://") || url.startsWith("blob:")) {
+    return url;
+  }
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+  const BASE_URL = API_BASE_URL.replace("/api", "");
+  return `${BASE_URL}${url.startsWith("/") ? "" : "/"}${url}`;
+}

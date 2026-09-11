@@ -107,6 +107,7 @@ async function issueTokens(user) {
   const profileDetails = await prisma.user.findUnique({
     where: { id: user.id },
     select: {
+      hospital: { select: { id: true, name: true, logoUrl: true } },
       patientProfile: {
         include: {
           assignedDoctor: { select: { fullName: true, specialization: true } },
@@ -130,6 +131,7 @@ async function issueTokens(user) {
       email: user.email,
       role: user.role,
       hospitalId: user.hospitalId,
+      hospital: profileDetails?.hospital || null,
       patientProfile: profileDetails?.patientProfile || null,
       doctorProfile: profileDetails?.doctorProfile || null,
     },

@@ -8,7 +8,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { authenticate } from "../middleware/authenticate.js";
 import { authorize } from "../middleware/authorize.js";
 import { scopeToHospital } from "../middleware/scopeToHospital.js";
-import { upload } from "../middleware/upload.js";
+import { upload, uploadMemory } from "../middleware/upload.js";
 import {
   createDoctorController,
   createHospitalAdminController,
@@ -42,7 +42,7 @@ router.get("/dashboard/registration-trend", asyncHandler(getRegistrationTrendCon
 router.get("/hospitals", asyncHandler(listHospitalsController));
 router.get("/hospitals/:hospitalId", asyncHandler(getHospitalDetailController));
 router.patch("/hospitals/:hospitalId", authorize("SUPER_ADMIN"), asyncHandler(updateHospitalController));
-router.patch("/hospitals/:hospitalId/logo", upload.single("logo"), asyncHandler(uploadHospitalLogoController));
+router.patch("/hospitals/:hospitalId/logo", uploadMemory.single("logo"), asyncHandler(uploadHospitalLogoController));
 
 // --- Users & Roles ---
 router.get("/users", asyncHandler(listUsersController));

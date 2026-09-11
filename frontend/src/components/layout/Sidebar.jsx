@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -6,6 +7,7 @@ import {
   Syringe, Footprints, Bot, Utensils, FolderOpen, TrendingUp, X,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.jsx";
+import { getImageUrl } from "../../utils/format.js";
 
 const ICONS = {
   home: Home,
@@ -31,15 +33,13 @@ const ICONS = {
 
 export function Sidebar({ navItems, isMobileNavOpen, onCloseMobileNav }) {
   const { user } = useAuth();
+  const [logoError, setLogoError] = useState(false);
 
-  const isPatientWithDoctor = user?.role === "PATIENT" && user?.patientProfile?.assignedDoctorId;
-  const isDoctorWithPatients = user?.role === "DOCTOR" && user?.doctorProfile?.patients?.length > 0;
-
-  const showLogo = isPatientWithDoctor || isDoctorWithPatients;
-  const hospital = isPatientWithDoctor ? user?.patientProfile?.hospital : isDoctorWithPatients ? user?.doctorProfile?.hospital : null;
-
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
-  const BASE_URL = API_BASE_URL.replace("/api", "");
+  const hospital =
+    user?.hospital ||
+    user?.doctorProfile?.hospital ||
+    user?.patientProfile?.hospital ||
+    null;
 
   const sidebarContent = (
     <div className="flex h-full flex-col bg-[#00383C] text-white select-none">
@@ -65,15 +65,22 @@ export function Sidebar({ navItems, isMobileNavOpen, onCloseMobileNav }) {
       </div>
 
       {/* Hospital Partner Logo Card */}
-      {showLogo && hospital?.logoUrl && (
+      {hospital && (hospital.logoUrl || hospital.name) && (
         <div className="mx-4 mt-4 mb-2 flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/5 p-2.5 backdrop-blur-sm">
-          <img
-            src={`${BASE_URL}${hospital.logoUrl}`}
-            alt="Hospital Logo"
-            className="h-9 w-9 rounded-lg object-contain bg-white p-1"
-          />
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white p-1 shrink-0 overflow-hidden text-[#00383C]">
+            {hospital.logoUrl && !logoError ? (
+              <img
+                src={getImageUrl(hospital.logoUrl)}
+                alt={`${hospital.name || "Hospital"} logo`}
+                onError={() => setLogoError(true)}
+                className="h-full w-full object-contain"
+              />
+            ) : (
+              <Building2 size={18} className="text-[#005E5D]" />
+            )}
+          </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-semibold text-white">{hospital.name}</p>
+            <p className="truncate text-xs font-semibold text-white">{hospital.name || "Partner Hospital"}</p>
             <p className="text-[10px] text-[#A2C0C2] font-medium">Partner Hospital</p>
           </div>
         </div>
